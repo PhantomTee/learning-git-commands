@@ -29,7 +29,7 @@ export default function CreateChapterPage() {
     try {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
-      await writeClient.connect("testnetBradbury").catch(() => {});
+      await writeClient.connect("studionet").catch(() => {});
 
       const txHash = await createChapter(
         writeClient,

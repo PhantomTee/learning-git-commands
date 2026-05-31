@@ -69,7 +69,7 @@ export default function CharacterPage() {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
-      await writeClient.connect("testnetBradbury").catch(() => {});
+      await writeClient.connect("studionet").catch(() => {});
       const txHash = await createCharacter(writeClient, form.name, form.sex, form.age);
       await waitForResult(txHash);
       await loadData(accounts[0]);
@@ -87,7 +87,7 @@ export default function CharacterPage() {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
-      await writeClient.connect("testnetBradbury").catch(() => {});
+      await writeClient.connect("studionet").catch(() => {});
       const txHash = await mintPrompts(writeClient, 10);
       await waitForResult(txHash);
       await loadData(accounts[0]);
