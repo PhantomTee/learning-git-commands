@@ -6,6 +6,8 @@ import json
 from dataclasses import dataclass
 from genlayer import *
 
+_ZERO_ADDR = Address(b'\x00' * 20)
+
 
 # ── Storage-compatible dataclasses ──────────────────────────────────────────
 
@@ -13,7 +15,7 @@ from genlayer import *
 @dataclass
 class Character:
     name: str
-    sex: bool          # False = male, True = female
+    sex: bool       # False = male, True = female
     age: u256
     character_class: str
     backstory: str
@@ -28,8 +30,8 @@ class Chapter:
     id: u256
     creator: Address
     title: str
-    scenario: str      # Rich narrative setup written by the Creator
-    win_condition: str # What the Explorer must achieve (LLM evaluates this)
+    scenario: str       # Rich narrative setup written by the Creator
+    win_condition: str  # What the Explorer must achieve (LLM evaluates this)
     attempt_count: u256
     active: bool
 
@@ -41,8 +43,8 @@ class Attempt:
     explorer: Address
     action: str
     success: bool
-    roll: u256         # Final d20 roll (1–20)
-    judgment: str      # LLM narrative of what happened
+    roll: u256      # Final d20 roll (1–20)
+    judgment: str   # LLM narrative of what happened
 
 
 # ── Main contract ────────────────────────────────────────────────────────────
@@ -53,10 +55,28 @@ class ChainTales(gl.Contract):
     attempts: DynArray[Attempt]          # Flat log — filter by chapter_id client-side
     prompt_balances: TreeMap[Address, u256]
     fomo_winners: TreeMap[u256, Address] # Last successful explorer per chapter
-    chapter_count: u256
+    # Bare u256 scalars are not safe at contract root — use TreeMap sentinel instead
+    _state: TreeMap[str, u256]           # stores "chapter_count"
 
     def __init__(self) -> None:
-        self.chapter_count = u256(0)
+        self._state["chapter_count"] = u256(0)
+
+    # ── Internal helpers ──────────────────────────────────────────────────
+
+    def _chapter_count(self) -> u256:
+        if "chapter_count" in self._state:
+            return self._state["chapter_count"]
+        return u256(0)
+
+    def _prompt_balance(self, addr: Address) -> u256:
+        if addr in self.prompt_balances:
+            return self.prompt_balances[addr]
+        return u256(0)
+
+    def _fomo_winner(self, chapter_id: u256) -> str:
+        if chapter_id in self.fomo_winners:
+            return str(self.fomo_winners[chapter_id])
+        return "0x" + "00" * 20
 
     # ── Prompt token (AI gas) ─────────────────────────────────────────────
 
@@ -64,12 +84,12 @@ class ChainTales(gl.Contract):
     def mint_prompts(self, amount: u256) -> None:
         """Dev helper: mint prompt tokens to the caller. Replace with real purchase logic."""
         caller = gl.message.sender_address
-        current = self.prompt_balances.get(caller, u256(0))
+        current = self._prompt_balance(caller)
         self.prompt_balances[caller] = current + amount
 
     @gl.public.view
     def prompt_balance(self, address: Address) -> u256:
-        return self.prompt_balances.get(address, u256(0))
+        return self._prompt_balance(address)
 
     # ── Character system ──────────────────────────────────────────────────
 
@@ -135,8 +155,8 @@ Return ONLY valid JSON with these exact fields:
         caller = gl.message.sender_address
         assert caller in self.characters, "Must have a character to create a chapter"
 
-        chapter_id = self.chapter_count
-        self.chapter_count = chapter_id + u256(1)
+        chapter_id = self._chapter_count()
+        self._state["chapter_count"] = chapter_id + u256(1)
 
         self.chapters[chapter_id] = Chapter(
             id=chapter_id,
@@ -151,15 +171,15 @@ Return ONLY valid JSON with these exact fields:
 
     @gl.public.write
     def close_chapter(self, chapter_id: u256) -> None:
-        ch = self.chapters[chapter_id]
-        assert ch.creator == gl.message.sender_address, "Only the creator can close a chapter"
-        ch.active = False
-        self.chapters[chapter_id] = ch
+        assert chapter_id in self.chapters, "Chapter does not exist"
+        assert self.chapters[chapter_id].creator == gl.message.sender_address, \
+            "Only the creator can close a chapter"
+        self.chapters[chapter_id].active = False
 
     @gl.public.view
     def get_chapter(self, chapter_id: u256) -> dict:
+        assert chapter_id in self.chapters, "Chapter does not exist"
         ch = self.chapters[chapter_id]
-        winner_addr = self.fomo_winners.get(chapter_id, Address("0x0000000000000000000000000000000000000000"))
         return {
             "id": int(ch.id),
             "creator": str(ch.creator),
@@ -168,17 +188,16 @@ Return ONLY valid JSON with these exact fields:
             "win_condition": ch.win_condition,
             "attempt_count": int(ch.attempt_count),
             "active": ch.active,
-            "fomo_winner": str(winner_addr),
+            "fomo_winner": self._fomo_winner(chapter_id),
         }
 
     @gl.public.view
     def get_all_chapters(self) -> list:
         result = []
-        count = int(self.chapter_count)
+        count = int(self._chapter_count())
         for i in range(count):
             cid = u256(i)
             ch = self.chapters[cid]
-            winner = self.fomo_winners.get(cid, Address("0x0000000000000000000000000000000000000000"))
             result.append({
                 "id": i,
                 "creator": str(ch.creator),
@@ -187,7 +206,7 @@ Return ONLY valid JSON with these exact fields:
                 "win_condition": ch.win_condition,
                 "attempt_count": int(ch.attempt_count),
                 "active": ch.active,
-                "fomo_winner": str(winner),
+                "fomo_winner": self._fomo_winner(cid),
             })
         return result
 
@@ -199,29 +218,32 @@ Return ONLY valid JSON with these exact fields:
         caller = gl.message.sender_address
         assert caller in self.characters, "Must have a character to explore"
 
-        balance = self.prompt_balances.get(caller, u256(0))
+        balance = self._prompt_balance(caller)
         assert balance >= u256(1), "Insufficient prompt tokens — mint more to continue"
 
-        ch = self.chapters[chapter_id]
-        assert ch.active, "This chapter is no longer active"
-        assert ch.creator != caller, "Creators cannot explore their own chapter"
+        assert chapter_id in self.chapters, "Chapter does not exist"
+        assert self.chapters[chapter_id].active, "This chapter is no longer active"
+        assert self.chapters[chapter_id].creator != caller, \
+            "Creators cannot explore their own chapter"
 
         # Burn the prompt token
         self.prompt_balances[caller] = balance - u256(1)
 
-        # Pseudo-random d20 roll seeded by attempt count (deterministic across validators)
-        roll = int(ch.attempt_count) % 20 + 1
+        # Pseudo-random d20 — deterministic across validators (same attempt_count = same roll)
+        roll = int(self.chapters[chapter_id].attempt_count) % 20 + 1
 
         character = self.characters[caller]
+        scenario = self.chapters[chapter_id].scenario
+        win_condition = self.chapters[chapter_id].win_condition
 
         def judge() -> str:
             prompt = f"""You are a strict but fair DND dungeon master adjudicating a challenge.
 
 CHAPTER SCENARIO:
-{ch.scenario}
+{scenario}
 
 WIN CONDITION:
-{ch.win_condition}
+{win_condition}
 
 EXPLORER CHARACTER:
 Name: {character.name}, Class: {character.character_class}
@@ -249,20 +271,21 @@ Return ONLY valid JSON:
         final_roll = max(1, min(20, roll + int(result["roll_modifier"])))
         success: bool = bool(result["success"])
 
-        attempt = Attempt(
+        self.attempts.append(Attempt(
             chapter_id=chapter_id,
             explorer=caller,
             action=action,
             success=success,
             roll=u256(final_roll),
             judgment=str(result["judgment"]),
-        )
-        self.attempts.append(attempt)
+        ))
 
-        ch.attempt_count = ch.attempt_count + u256(1)
+        # Mutate storage directly through the proxy — no re-assignment needed
+        self.chapters[chapter_id].attempt_count = \
+            self.chapters[chapter_id].attempt_count + u256(1)
+
         if success:
             self.fomo_winners[chapter_id] = caller
-        self.chapters[chapter_id] = ch
 
         return {
             "success": success,
