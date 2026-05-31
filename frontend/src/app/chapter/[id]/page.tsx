@@ -57,7 +57,7 @@ export default function ChapterPage() {
     const accounts = await eth.request({ method: "eth_requestAccounts" });
     setWalletAddress(accounts[0]);
     const writeClient = createWriteClient(accounts[0] as `0x${string}`);
-    await writeClient.connect("testnetBradbury").catch(() => {});
+    await writeClient.connect("studionet").catch(() => {});
 
     const txHash = await submitAction(writeClient, chapterId, action);
     await waitForResult(txHash);

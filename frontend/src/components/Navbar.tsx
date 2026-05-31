@@ -22,7 +22,7 @@ export default function Navbar() {
     const accounts = await eth.request({ method: "eth_requestAccounts" });
     setAddress(accounts[0]);
     const client = createWriteClient(accounts[0] as `0x${string}`);
-    await client.connect("testnetBradbury").catch(() => {});
+    await client.connect("studionet").catch(() => {});
   }
 
   return (

@@ -1,13 +1,10 @@
 "use client";
 
 import { createClient } from "genlayer-js";
-import { localnet, testnetBradbury } from "genlayer-js/chains";
+import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
 
-const chain =
-  process.env.NEXT_PUBLIC_GENLAYER_RPC_URL?.includes("localhost")
-    ? localnet
-    : testnetBradbury;
+const chain = studionet; // chain ID 61999, https://studio.genlayer.com/api
 
 // Read client — no wallet needed
 export const readClient = createClient({ chain });
