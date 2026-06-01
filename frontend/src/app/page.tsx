@@ -1,4 +1,4 @@
-import { getAllChapters, Chapter } from "@/lib/genlayer";
+import { getChapters, Chapter } from "@/lib/genlayer";
 import ChapterCard from "@/components/ChapterCard";
 import WorldMap from "@/components/WorldMap";
 import Link from "next/link";
@@ -8,7 +8,7 @@ export const revalidate = 30;
 export default async function HomePage() {
   let chapters: Chapter[] = [];
   try {
-    chapters = await getAllChapters();
+    chapters = await getChapters(0, 50);
   } catch {
     // Contract not deployed yet or RPC unavailable — show empty state
   }

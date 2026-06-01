@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { Chapter } from "@/lib/genlayer";
-
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+import { Chapter, hasWinner } from "@/lib/genlayer";
 
 export default function ChapterCard({ chapter }: { chapter: Chapter }) {
-  const hasWinner = chapter.fomo_winner !== ZERO_ADDR;
+  const winner = hasWinner(chapter);
+  const fw = chapter.fomo_winner;
 
   return (
     <Link
@@ -30,9 +29,10 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
 
       <div className="flex items-center gap-4 text-xs text-gray-500">
         <span>🎲 {chapter.attempt_count} attempts</span>
-        {hasWinner && (
+        <span>⚔ D{chapter.difficulty}</span>
+        {winner && (
           <span className="text-amber-400">
-            ⚡ FOMO: {chapter.fomo_winner.slice(0, 6)}…{chapter.fomo_winner.slice(-4)}
+            ⚡ {fw.explorer.slice(0, 6)}…{fw.explorer.slice(-4)} (r{fw.roll})
           </span>
         )}
         <span className="ml-auto font-mono">

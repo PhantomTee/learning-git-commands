@@ -8,13 +8,12 @@ import {
   submitAction,
   waitForResult,
   createWriteClient,
+  hasWinner,
   Chapter,
   Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
 import Link from "next/link";
-
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 export default function ChapterPage() {
   const params = useParams();
@@ -25,12 +24,16 @@ export default function ChapterPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function loadAttempts(id: number) {
+    return getAttempts(id, 0, 50);
+  }
+
   useEffect(() => {
     async function load() {
       try {
         const [ch, atts] = await Promise.all([
           getChapter(chapterId),
-          getAttempts(chapterId),
+          loadAttempts(chapterId),
         ]);
         setChapter(ch);
         setAttempts(atts);
@@ -62,15 +65,13 @@ export default function ChapterPage() {
     const txHash = await submitAction(writeClient, chapterId, action);
     await waitForResult(txHash);
 
-    // Re-fetch to get the new attempt result
     const [updatedCh, updatedAttempts] = await Promise.all([
       getChapter(chapterId),
-      getAttempts(chapterId),
+      loadAttempts(chapterId),
     ]);
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
 
-    // Return the last attempt as the result
     return updatedAttempts[updatedAttempts.length - 1] ?? null;
   }
 
@@ -93,7 +94,8 @@ export default function ChapterPage() {
     );
   }
 
-  const hasWinner = chapter.fomo_winner !== ZERO_ADDR;
+  const winner = hasWinner(chapter);
+  const fw = chapter.fomo_winner;
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
@@ -116,7 +118,7 @@ export default function ChapterPage() {
         </div>
         <div className="text-xs text-gray-500 font-mono">
           Creator: {chapter.creator.slice(0, 8)}…{chapter.creator.slice(-6)} ·{" "}
-          {chapter.attempt_count} attempts
+          {chapter.attempt_count} attempts · Difficulty {chapter.difficulty}/20
         </div>
       </div>
 
@@ -126,17 +128,20 @@ export default function ChapterPage() {
           Scenario
         </h2>
         <p className="text-gray-300 leading-relaxed">{chapter.scenario}</p>
+        <div className="pt-1 text-xs text-gray-500 border-t border-gray-800">
+          Win condition: {chapter.win_condition}
+        </div>
       </div>
 
       {/* FOMO winner banner */}
-      {hasWinner && (
+      {winner && (
         <div className="border border-amber-500/40 bg-amber-950/20 rounded-xl p-4 flex items-center gap-3">
           <span className="text-2xl">⚡</span>
           <div>
             <div className="font-semibold text-amber-400">FOMO Leader</div>
             <div className="text-sm text-gray-400">
-              Last successful explorer: {chapter.fomo_winner.slice(0, 8)}…
-              {chapter.fomo_winner.slice(-6)}
+              {fw.explorer.slice(0, 8)}…{fw.explorer.slice(-6)}
+              <span className="ml-2 text-amber-300/70">rolled {fw.roll}</span>
             </div>
           </div>
         </div>
@@ -151,6 +156,7 @@ export default function ChapterPage() {
           {!walletAddress && (
             <p className="text-xs text-gray-500">
               Connect your wallet to play. You need 1 Prompt token per action.
+              Max 3 attempts per chapter.
             </p>
           )}
           <ActionInput
@@ -189,10 +195,8 @@ export default function ChapterPage() {
                     {att.explorer.slice(0, 6)}…{att.explorer.slice(-4)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-400 italic">
-                  Action: "{att.action}"
-                </p>
-                <p className="text-sm text-gray-300">⚔ {att.judgment}</p>
+                <p className="text-sm text-gray-400 italic">"{att.action}"</p>
+                <p className="text-sm text-gray-300">{att.judgment}</p>
               </div>
             ))}
           </div>
