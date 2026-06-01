@@ -1,3 +1,4 @@
+# { "Depends": "py-genlayer:latest" }
 # ChainTales – Production-hardened AI-judged DND game on Genlayer
 #
 # v3 changes vs v2:
