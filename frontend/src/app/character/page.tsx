@@ -22,7 +22,7 @@ export default function CharacterPage() {
   const [status, setStatus] = useState<"idle" | "pending">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState({ name: "", sex: false, age: 25 });
+  const [form, setForm] = useState({ name: "", sex: "male", age: 25 });
 
   useEffect(() => {
     async function init() {
@@ -88,7 +88,7 @@ export default function CharacterPage() {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
-      const txHash = await mintPrompts(writeClient, 10);
+      const txHash = await mintPrompts(writeClient, accounts[0], 10);
       await waitForResult(txHash);
       await loadData(accounts[0]);
       setStatus("idle");
@@ -172,12 +172,13 @@ export default function CharacterPage() {
               <div className="space-y-1 flex-1">
                 <label className="text-sm font-medium text-gray-300">Sex</label>
                 <select
-                  value={form.sex ? "true" : "false"}
-                  onChange={(e) => setForm((f) => ({ ...f, sex: e.target.value === "true" }))}
+                  value={form.sex}
+                  onChange={(e) => setForm((f) => ({ ...f, sex: e.target.value }))}
                   className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-2.5 text-sm outline-none transition-colors"
                 >
-                  <option value="false">Male</option>
-                  <option value="true">Female</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
             </div>

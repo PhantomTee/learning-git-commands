@@ -77,16 +77,16 @@ export async function getLeaderboard() {
     address: CONTRACT_ADDRESS,
     functionName: "get_leaderboard",
     args: [],
-  }) as unknown as Promise<Attempt[]>;
+  }) as unknown as Promise<LeaderboardEntry[]>;
 }
 
 // ── Write helpers (return tx hash) ──────────────────────────────────────────
 
-export async function mintPrompts(writeClient: any, amount: number) {
+export async function mintPrompts(writeClient: any, to: string, amount: number) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "mint_prompts",
-    args: [amount],
+    args: [to, amount],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -94,7 +94,7 @@ export async function mintPrompts(writeClient: any, amount: number) {
 export async function createCharacter(
   writeClient: any,
   name: string,
-  sex: boolean,
+  sex: string,
   age: number
 ) {
   return writeClient.writeContract({
@@ -109,12 +109,13 @@ export async function createChapter(
   writeClient: any,
   title: string,
   scenario: string,
-  winCondition: string
+  winCondition: string,
+  difficulty: number
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_chapter",
-    args: [title, scenario, winCondition],
+    args: [title, scenario, winCondition, difficulty],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -153,6 +154,7 @@ export interface Chapter {
   title: string;
   scenario: string;
   win_condition: string;
+  difficulty: number;
   attempt_count: number;
   active: boolean;
   fomo_winner: string;
@@ -164,12 +166,16 @@ export interface Attempt {
   success: boolean;
   roll: number;
   judgment: string;
-  chapter_id?: number;
+}
+
+export interface LeaderboardEntry {
+  chapter_id: number;
+  fomo_winner: string;
 }
 
 export interface Character {
   name: string;
-  sex: boolean;
+  sex: string;
   age: number;
   character_class: string;
   backstory: string;
