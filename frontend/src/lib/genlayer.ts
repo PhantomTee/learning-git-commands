@@ -24,11 +24,12 @@ export const CONTRACT_ADDRESS =
 
 // ── Typed read helpers ───────────────────────────────────────────────────────
 
-export async function getAllChapters() {
+/** Paginated chapter list. Pass offset=0, limit=50 for the first page. */
+export async function getChapters(offset: number, limit: number) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
-    functionName: "get_all_chapters",
-    args: [],
+    functionName: "get_chapters",
+    args: [offset, limit],
   }) as unknown as Promise<Chapter[]>;
 }
 
@@ -40,11 +41,12 @@ export async function getChapter(id: number) {
   }) as unknown as Promise<Chapter>;
 }
 
-export async function getAttempts(chapterId: number) {
+/** Paginated attempt list. Pass offset=0, limit=50 for the first page. */
+export async function getAttempts(chapterId: number, offset: number, limit: number) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_attempts",
-    args: [chapterId],
+    args: [chapterId, offset, limit],
   }) as unknown as Promise<Attempt[]>;
 }
 
@@ -72,6 +74,15 @@ export async function getPromptBalance(address: string) {
   }) as unknown as Promise<number>;
 }
 
+/** How many attempts this address has used on a chapter (max 3). */
+export async function getUserAttempts(chapterId: number, address: string) {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_user_attempts",
+    args: [chapterId, address],
+  }) as unknown as Promise<number>;
+}
+
 export async function getLeaderboard() {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
@@ -87,6 +98,15 @@ export async function mintPrompts(writeClient: any, to: string, amount: number) 
     address: CONTRACT_ADDRESS,
     functionName: "mint_prompts",
     args: [to, amount],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function transferOwnership(writeClient: any, newOwner: string) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "transfer_ownership",
+    args: [newOwner],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -148,6 +168,12 @@ export async function waitForResult(txHash: string) {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export interface FomoWinner {
+  explorer: string;
+  roll: number;
+  attempt_index: number;
+}
+
 export interface Chapter {
   id: number;
   creator: string;
@@ -157,7 +183,7 @@ export interface Chapter {
   difficulty: number;
   attempt_count: number;
   active: boolean;
-  fomo_winner: string;
+  fomo_winner: FomoWinner;
 }
 
 export interface Attempt {
@@ -170,7 +196,9 @@ export interface Attempt {
 
 export interface LeaderboardEntry {
   chapter_id: number;
-  fomo_winner: string;
+  explorer: string;
+  roll: number;
+  attempt_index: number;
 }
 
 export interface Character {
@@ -182,4 +210,10 @@ export interface Character {
   strength: number;
   intelligence: number;
   agility: number;
+}
+
+export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+export function hasWinner(chapter: Chapter): boolean {
+  return chapter.fomo_winner.explorer !== ZERO_ADDR;
 }
