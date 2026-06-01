@@ -1,21 +1,16 @@
 # { "Depends": "py-genlayer:latest" }
-# ChainTales – Production-hardened AI-judged DND game on Genlayer
+# ChainTales – AI-judged DND adventure game on Genlayer
 #
-# v3 changes vs v2:
-#   strict_eq safety:  AI judge returns roll_modifier ONLY (integer) — no narrative text.
-#                      Narrative is generated deterministically in code, zero consensus risk.
-#   Stat fairness:     Fixed stat table per class — always sums to 30, no rounding bug.
-#   Token safety:      Prompt token deducted AFTER AI call validates successfully.
-#   Storage init:      chapter_attempts[chapter_id] initialised in create_chapter so
-#                      DynArray slot exists before first append (Critical fix).
-#   XML injection:     _esc() escapes &/</>  before user strings enter prompts.
-#   Pagination:        get_chapters(offset, limit) and get_attempts(chapter_id, offset, limit).
-#   Per-user cap:      MAX_USER_ATTEMPTS per chapter (composite-key TreeMap).
-#   Per-chapter cap:   MAX_CHAPTER_ATTEMPTS enforced in submit_action.
-#   Ownership:         transfer_ownership() added.
-#   FOMO detail:       FomoWinner stores explorer + winning roll + attempt index.
-#   Schema guard:      assert "roll_modifier" in result before use, not silent default.
-#   Roll comment:      Clearly labelled deterministic, not cryptographically random.
+# v4 storage architecture change:
+#   TreeMap[u256, DynArray[Attempt]] removed — DynArray nested in TreeMap
+#   has no guaranteed lazy-init in GenVM. Replaced with flat composite-key map:
+#     chapter_attempts_flat: TreeMap[str, Attempt]
+#   keyed by "chapter_id:local_idx". get_attempts is now O(limit), not O(scan).
+#
+# Other v4 fixes:
+#   CLASS_STATS module-level dict → _class_stats() method (GenVM-safe)
+#   Input strip guards — rejects blank / whitespace-only strings
+#   transfer_ownership zero-address guard
 
 import json
 from dataclasses import dataclass
@@ -24,16 +19,6 @@ from genlayer import *
 ALLOWED_CLASSES = ["Warrior", "Mage", "Rogue", "Ranger", "Bard", "Cleric"]
 MAX_CHAPTER_ATTEMPTS = 200
 MAX_USER_ATTEMPTS    = 3
-
-# Fixed stats per class — sums to exactly 30, no rounding edge cases.
-CLASS_STATS: dict = {
-    "Warrior": (14,  7,  9),
-    "Mage":    ( 6, 16,  8),
-    "Rogue":   ( 8,  8, 14),
-    "Ranger":  ( 9,  9, 12),
-    "Bard":    ( 8, 13,  9),
-    "Cleric":  (10, 12,  8),
-}
 
 
 # ── Storage-compatible dataclasses ──────────────────────────────────────────
@@ -79,20 +64,20 @@ class Attempt:
 class FomoWinner:
     explorer: Address
     roll: u256
-    attempt_index: u256   # index into chapter_attempts[chapter_id]
+    attempt_index: u256
 
 
 # ── Main contract ────────────────────────────────────────────────────────────
 
 class ChainTales(gl.Contract):
     owner: Address
-    characters:      TreeMap[Address, Character]
-    chapters:        TreeMap[u256, Chapter]
-    chapter_attempts: TreeMap[u256, DynArray[Attempt]]  # per-chapter, bounded
-    prompt_balances: TreeMap[Address, u256]
-    fomo_winners:    TreeMap[u256, FomoWinner]
-    user_attempts:   TreeMap[str, u256]   # key = "chapter_id:address" → attempt count
-    _state:          TreeMap[str, u256]   # stores "chapter_count"
+    characters:           TreeMap[Address, Character]
+    chapters:             TreeMap[u256, Chapter]
+    chapter_attempts_flat: TreeMap[str, Attempt]    # key = "chapter_id:local_idx"
+    prompt_balances:      TreeMap[Address, u256]
+    fomo_winners:         TreeMap[u256, FomoWinner]
+    user_attempts:        TreeMap[str, u256]        # key = "chapter_id:address"
+    _state:               TreeMap[str, u256]        # "chapter_count"
 
     def __init__(self) -> None:
         self.owner = gl.message.sender_address
@@ -123,6 +108,20 @@ class ChainTales(gl.Contract):
             }
         return {"explorer": "0x" + "00" * 20, "roll": 0, "attempt_index": 0}
 
+    def _akey(self, chapter_id: u256, local_idx: int) -> str:
+        """Composite key for per-chapter attempt storage."""
+        return str(int(chapter_id)) + ":" + str(local_idx)
+
+    def _ukey(self, chapter_id: u256, addr: Address) -> str:
+        """Composite key for per-user per-chapter attempt count."""
+        return str(int(chapter_id)) + ":" + str(addr)
+
+    def _user_attempt_count(self, chapter_id: u256, addr: Address) -> u256:
+        k = self._ukey(chapter_id, addr)
+        if k in self.user_attempts:
+            return self.user_attempts[k]
+        return u256(0)
+
     def _parse(self, raw) -> dict:
         if isinstance(raw, dict):
             return raw
@@ -132,6 +131,20 @@ class ChainTales(gl.Contract):
         """Escape XML-special characters so user strings cannot break prompt delimiters."""
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+    def _class_stats(self, character_class: str) -> tuple:
+        """Fixed stat allocation per class — always sums to 30."""
+        if character_class == "Warrior":
+            return (14, 7, 9)
+        if character_class == "Mage":
+            return (6, 16, 8)
+        if character_class == "Rogue":
+            return (8, 8, 14)
+        if character_class == "Ranger":
+            return (9, 9, 12)
+        if character_class == "Bard":
+            return (8, 13, 9)
+        return (10, 12, 8)  # Cleric
+
     def _derive_roll(self, chapter_id: u256, attempt_count: int, agility: int) -> int:
         """Deterministic challenge roll (Knuth hash). NOT cryptographically random.
         For a fair game with real value, replace with a commit-reveal scheme."""
@@ -140,16 +153,6 @@ class ChainTales(gl.Contract):
             + agility * 1000003
             + int(chapter_id) * 999983
         ) % 20 + 1
-
-    def _ukey(self, chapter_id: u256, addr: Address) -> str:
-        """Composite key for per-user per-chapter attempt tracking."""
-        return str(int(chapter_id)) + ":" + str(addr)
-
-    def _user_attempt_count(self, chapter_id: u256, addr: Address) -> u256:
-        k = self._ukey(chapter_id, addr)
-        if k in self.user_attempts:
-            return self.user_attempts[k]
-        return u256(0)
 
     # ── Admin ─────────────────────────────────────────────────────────────
 
@@ -166,6 +169,7 @@ class ChainTales(gl.Contract):
     def transfer_ownership(self, new_owner: Address) -> None:
         self._only_owner()
         assert new_owner != self.owner, "Already owner"
+        assert new_owner != Address(b'\x00' * 20), "Cannot transfer to zero address"
         self.owner = new_owner
 
     @gl.public.view
@@ -179,7 +183,8 @@ class ChainTales(gl.Contract):
         """AI assigns class and writes backstory; stats come from fixed class table."""
         caller = gl.message.sender_address
         assert caller not in self.characters, "Character already exists"
-        assert 1 <= len(name) <= 32, "Name must be 1–32 chars"
+        assert name == name.strip() and len(name) >= 1, "Name cannot be blank or padded"
+        assert len(name) <= 32, "Name must be at most 32 chars"
         assert sex in ["male", "female", "other"], "sex must be male/female/other"
         assert age >= u256(10) and age <= u256(1000), "Age must be 10–1000"
 
@@ -215,7 +220,7 @@ Return ONLY valid JSON:
         backstory = str(data["backstory"])
         assert 10 <= len(backstory) <= 500, "Backstory length out of range"
 
-        str_stat, int_stat, agi_stat = CLASS_STATS[character_class]
+        str_stat, int_stat, agi_stat = self._class_stats(character_class)
 
         self.characters[caller] = Character(
             name=name, sex=sex, age=age,
@@ -254,9 +259,13 @@ Return ONLY valid JSON:
         """Creator sets scenario, win condition, and required roll (difficulty 1–20)."""
         caller = gl.message.sender_address
         assert caller in self.characters, "Must have a character to create a chapter"
-        assert 1 <= len(title) <= 80, "Title must be 1–80 chars"
-        assert 1 <= len(scenario) <= 1000, "Scenario must be 1–1000 chars"
-        assert 1 <= len(win_condition) <= 300, "Win condition must be 1–300 chars"
+        assert title == title.strip() and len(title) >= 1, "Title cannot be blank or padded"
+        assert len(title) <= 80, "Title must be at most 80 chars"
+        assert scenario == scenario.strip() and len(scenario) >= 1, "Scenario cannot be blank or padded"
+        assert len(scenario) <= 1000, "Scenario must be at most 1000 chars"
+        assert win_condition == win_condition.strip() and len(win_condition) >= 1, \
+            "Win condition cannot be blank or padded"
+        assert len(win_condition) <= 300, "Win condition must be at most 300 chars"
         assert difficulty >= u256(1) and difficulty <= u256(20), "Difficulty must be 1–20"
 
         chapter_id = self._chapter_count()
@@ -268,11 +277,6 @@ Return ONLY valid JSON:
             difficulty=difficulty,
             attempt_count=u256(0), active=True,
         )
-
-        # Explicitly touch the DynArray slot so it is initialised before any append.
-        # Without this, appending to a missing TreeMap key may fail at runtime.
-        self.chapter_attempts[chapter_id].append  # noqa: B018 — touch to init storage slot
-
         return chapter_id
 
     @gl.public.write
@@ -332,7 +336,8 @@ Return ONLY valid JSON:
         ch = self.chapters[chapter_id]
         assert ch.active, "Chapter is no longer active"
         assert ch.creator != caller, "Creators cannot explore their own chapter"
-        assert 1 <= len(action) <= 500, "Action must be 1–500 chars"
+        assert action == action.strip() and len(action) >= 1, "Action cannot be blank or padded"
+        assert len(action) <= 500, "Action must be at most 500 chars"
 
         assert int(ch.attempt_count) < MAX_CHAPTER_ATTEMPTS, "Chapter attempt limit reached"
         user_count = self._user_attempt_count(chapter_id, caller)
@@ -377,65 +382,59 @@ Return ONLY valid JSON:
 
         result = self._parse(gl.eq_principle.strict_eq(judge))
 
-        # Hard schema check — don't silently default on missing keys
         assert "roll_modifier" in result, "AI response missing roll_modifier"
-
         modifier   = max(-2, min(2, int(result["roll_modifier"])))
         final_roll = max(1, min(20, roll + modifier))
         success    = final_roll >= difficulty
 
         # Deterministic narrative — no AI, no consensus risk, fully auditable
         if success:
-            judgment = (
-                f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} succeeds."
-            )
+            judgment = f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} succeeds."
         else:
-            judgment = (
-                f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} falls short."
-            )
+            judgment = f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} falls short."
 
-        attempt_index = int(ch.attempt_count)
+        local_idx = int(ch.attempt_count)
 
         # Deduct token only after validation and AI call complete successfully
         self.prompt_balances[caller] = balance - u256(1)
 
-        self.chapter_attempts[chapter_id].append(Attempt(
+        # Store attempt at composite key — no DynArray init needed
+        akey = self._akey(chapter_id, local_idx)
+        self.chapter_attempts_flat[akey] = Attempt(
             explorer=caller, action=action,
             success=success, roll=u256(final_roll), judgment=judgment,
-        ))
+        )
         self.chapters[chapter_id].attempt_count = ch.attempt_count + u256(1)
 
         ukey = self._ukey(chapter_id, caller)
         self.user_attempts[ukey] = user_count + u256(1)
 
-        # FOMO: last successful explorer before chapter closes
         if success:
             self.fomo_winners[chapter_id] = FomoWinner(
                 explorer=caller,
                 roll=u256(final_roll),
-                attempt_index=u256(attempt_index),
+                attempt_index=u256(local_idx),
             )
 
         return {"success": success, "roll": final_roll, "judgment": judgment}
 
     @gl.public.view
     def get_attempts(self, chapter_id: u256, offset: u256, limit: u256) -> list:
-        """Paginated attempts for a chapter. Bounded by MAX_CHAPTER_ATTEMPTS."""
+        """O(limit) paginated attempts — no array scan."""
         assert limit >= u256(1) and limit <= u256(50), "Limit must be 1–50"
-        if chapter_id not in self.chapter_attempts:
-            return []
+        assert chapter_id in self.chapters, "Chapter does not exist"
+        ch_count = int(self.chapters[chapter_id].attempt_count)
         result = []
-        skipped = 0
-        for a in self.chapter_attempts[chapter_id]:
-            if skipped < int(offset):
-                skipped += 1
-                continue
-            if len(result) >= int(limit):
-                break
-            result.append({
-                "explorer": str(a.explorer), "action": a.action,
-                "success": a.success, "roll": int(a.roll), "judgment": a.judgment,
-            })
+        i = int(offset)
+        while i < ch_count and len(result) < int(limit):
+            akey = self._akey(chapter_id, i)
+            if akey in self.chapter_attempts_flat:
+                a = self.chapter_attempts_flat[akey]
+                result.append({
+                    "explorer": str(a.explorer), "action": a.action,
+                    "success": a.success, "roll": int(a.roll), "judgment": a.judgment,
+                })
+            i += 1
         return result
 
     @gl.public.view
