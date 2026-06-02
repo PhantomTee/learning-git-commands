@@ -70,13 +70,13 @@ class FomoWinner:
 
 class ChainTales(gl.Contract):
     owner: Address
-    characters:           TreeMap[Address, Character]
-    chapters:             TreeMap[u256, Chapter]
-    chapter_attempts_flat: TreeMap[str, Attempt]    # key = "chapter_id:local_idx"
-    prompt_balances:      TreeMap[Address, u256]
-    fomo_winners:         TreeMap[u256, FomoWinner]
-    user_attempts:        TreeMap[str, u256]        # key = "chapter_id:address"
-    _state:               TreeMap[str, u256]        # "chapter_count"
+    characters: TreeMap[Address, Character]
+    chapters: TreeMap[u256, Chapter]
+    chapter_attempts_flat: TreeMap[str, Attempt]  # key = "chapter_id:local_idx"
+    prompt_balances: TreeMap[Address, u256]
+    fomo_winners: TreeMap[u256, FomoWinner]
+    user_attempts: TreeMap[str, u256]  # key = "chapter_id:address"
+    _state: TreeMap[str, u256]         # "chapter_count"
 
     def __init__(self) -> None:
         self.owner = gl.message.sender_address
@@ -354,13 +354,13 @@ Return ONLY valid JSON:
         character = self.characters[caller]
         # Snapshot before any mutation — single source of truth for storage key AND roll seed.
         attempt_idx = int(ch.attempt_count)
-        roll        = self._derive_roll(chapter_id, attempt_idx, int(character.agility))
-        difficulty  = int(ch.difficulty)
+        roll = self._derive_roll(chapter_id, attempt_idx, int(character.agility))
+        difficulty = int(ch.difficulty)
 
-        safe_scenario      = self._esc(ch.scenario)
+        safe_scenario = self._esc(ch.scenario)
         safe_win_condition = self._esc(ch.win_condition)
-        safe_action        = self._esc(action)
-        safe_name          = self._esc(character.name)
+        safe_action = self._esc(action)
+        safe_name = self._esc(character.name)
 
         def judge() -> str:
             prompt = f"""You are scoring an explorer's action in a DND game.
@@ -394,7 +394,7 @@ Return ONLY valid JSON:
 }}"""
             return gl.nondet.exec_prompt(prompt, response_format="json")
 
-        result  = self._parse(gl.eq_principle.strict_eq(judge))
+        result = self._parse(gl.eq_principle.strict_eq(judge))
         assert "verdict" in result, "AI response missing verdict"
         verdict = str(result["verdict"]).strip().upper()
 
@@ -411,7 +411,7 @@ Return ONLY valid JSON:
         else:
             raise Exception("AI returned invalid verdict")
         final_roll = max(1, min(20, roll + modifier))
-        success    = final_roll >= difficulty
+        success = final_roll >= difficulty
 
         # Deterministic narrative — no AI, no consensus risk, fully auditable
         if success:
