@@ -175,7 +175,7 @@ class ChainTales(gl.Contract):
         assert caller not in self.characters, "Character already exists"
         assert name == name.strip() and len(name) >= 1, "Name cannot be blank or padded"
         assert len(name) <= 32, "Name must be at most 32 chars"
-        assert gender in ["male", "female", "other"], "gender must be male/female/other"
+        assert gender in ("male", "female", "other"), "gender must be male/female/other"
         assert age >= u256(10) and age <= u256(1000), "Age must be 10–1000"
 
         safe_name = self._esc(name)
