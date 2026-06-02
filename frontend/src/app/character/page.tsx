@@ -147,8 +147,9 @@ export default function CharacterPage() {
 
           <form onSubmit={handleCreateCharacter} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-300">Name</label>
+              <label htmlFor="char-name" className="text-sm font-medium text-gray-300">Name</label>
               <input
+                id="char-name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 required
@@ -159,8 +160,9 @@ export default function CharacterPage() {
 
             <div className="flex gap-4">
               <div className="space-y-1 flex-1">
-                <label className="text-sm font-medium text-gray-300">Age</label>
+                <label htmlFor="char-age" className="text-sm font-medium text-gray-300">Age</label>
                 <input
+                  id="char-age"
                   type="number"
                   min={16}
                   max={120}
@@ -170,8 +172,9 @@ export default function CharacterPage() {
                 />
               </div>
               <div className="space-y-1 flex-1">
-                <label className="text-sm font-medium text-gray-300">Gender</label>
+                <label htmlFor="char-gender" className="text-sm font-medium text-gray-300">Gender</label>
                 <select
+                  id="char-gender"
                   value={form.gender}
                   onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}
                   className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-2.5 text-sm outline-none transition-colors"
