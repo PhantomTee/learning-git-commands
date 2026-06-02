@@ -1,16 +1,4 @@
 # { "Depends": "py-genlayer:latest" }
-# ChainTales – AI-judged DND adventure game on Genlayer
-#
-# v4 storage architecture change:
-#   TreeMap[u256, DynArray[Attempt]] removed — DynArray nested in TreeMap
-#   has no guaranteed lazy-init in GenVM. Replaced with flat composite-key map:
-#     chapter_attempts_flat: TreeMap[str, Attempt]
-#   keyed by "chapter_id:local_idx". get_attempts is now O(limit), not O(scan).
-#
-# Other v4 fixes:
-#   CLASS_STATS module-level dict → _class_stats() method (GenVM-safe)
-#   Input strip guards — rejects blank / whitespace-only strings
-#   transfer_ownership zero-address guard
 
 import json
 from dataclasses import dataclass
