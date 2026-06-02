@@ -14,7 +14,7 @@ MAX_USER_ATTEMPTS    = 3
 @dataclass
 class Character:
     name: str
-    gender: str        # "male" | "female" | "other"
+    gender: str
     age: u256
     character_class: str
     backstory: str
@@ -31,7 +31,7 @@ class Chapter:
     title: str
     scenario: str
     win_condition: str
-    difficulty: u256   # d20 roll required to succeed (1–20)
+    difficulty: u256
     attempt_count: u256
     active: bool
 
