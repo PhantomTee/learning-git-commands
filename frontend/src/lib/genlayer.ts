@@ -114,13 +114,13 @@ export async function transferOwnership(writeClient: any, newOwner: string) {
 export async function createCharacter(
   writeClient: any,
   name: string,
-  sex: string,
+  gender: string,
   age: number
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_character",
-    args: [name, sex, age],
+    args: [name, gender, age],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -203,7 +203,7 @@ export interface LeaderboardEntry {
 
 export interface Character {
   name: string;
-  sex: string;
+  gender: string;
   age: number;
   character_class: string;
   backstory: string;

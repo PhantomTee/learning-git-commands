@@ -14,7 +14,7 @@ MAX_USER_ATTEMPTS    = 3
 @dataclass
 class Character:
     name: str
-    sex: str           # "male" | "female" | "other"
+    gender: str        # "male" | "female" | "other"
     age: u256
     character_class: str
     backstory: str
@@ -169,13 +169,13 @@ class ChainTales(gl.Contract):
     # ── Character system ──────────────────────────────────────────────────
 
     @gl.public.write
-    def create_character(self, name: str, sex: str, age: u256) -> None:
+    def create_character(self, name: str, gender: str, age: u256) -> None:
         """AI picks class only (strict_eq safe). Backstory is deterministic code."""
         caller = gl.message.sender_address
         assert caller not in self.characters, "Character already exists"
         assert name == name.strip() and len(name) >= 1, "Name cannot be blank or padded"
         assert len(name) <= 32, "Name must be at most 32 chars"
-        assert sex in ["male", "female", "other"], "sex must be male/female/other"
+        assert gender in ["male", "female", "other"], "gender must be male/female/other"
         assert age >= u256(10) and age <= u256(1000), "Age must be 10–1000"
 
         safe_name = self._esc(name)
@@ -188,10 +188,10 @@ System rules:
 - Return ONLY the JSON block below. No narrative, no explanation.
 
 <name>{safe_name}</name>
-<sex>{sex}</sex>
+<gender>{gender}</gender>
 <age>{int(age)}</age>
 
-Based solely on the name, sex, and age, assign the best fitting class.
+Based solely on the name, gender, and age, assign the best fitting class.
 
 Return ONLY valid JSON:
 {{
@@ -219,7 +219,7 @@ Return ONLY valid JSON:
         str_stat, int_stat, agi_stat = self._class_stats(character_class)
 
         self.characters[caller] = Character(
-            name=name, sex=sex, age=age,
+            name=name, gender=gender, age=age,
             character_class=character_class,
             backstory=backstory,
             strength=u256(str_stat),
@@ -232,7 +232,7 @@ Return ONLY valid JSON:
         assert address in self.characters, "Character does not exist"
         c = self.characters[address]
         return {
-            "name": c.name, "sex": c.sex, "age": int(c.age),
+            "name": c.name, "gender": c.gender, "age": int(c.age),
             "character_class": c.character_class, "backstory": c.backstory,
             "strength": int(c.strength), "intelligence": int(c.intelligence),
             "agility": int(c.agility),
