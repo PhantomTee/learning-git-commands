@@ -203,7 +203,6 @@ export interface LeaderboardEntry {
 
 export interface Character {
   name: string;
-  gender: string;
   age: number;
   character_class: string;
   backstory: string;

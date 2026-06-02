@@ -14,7 +14,6 @@ MAX_USER_ATTEMPTS    = 3
 @dataclass
 class Character:
     name: str
-    gender: str
     age: u256
     character_class: str
     backstory: str
@@ -219,7 +218,7 @@ Return ONLY valid JSON:
         str_stat, int_stat, agi_stat = self._class_stats(character_class)
 
         self.characters[caller] = Character(
-            name=name, gender=gender, age=age,
+            name=name, age=age,
             character_class=character_class,
             backstory=backstory,
             strength=u256(str_stat),
@@ -232,7 +231,7 @@ Return ONLY valid JSON:
         assert address in self.characters, "Character does not exist"
         c = self.characters[address]
         return {
-            "name": c.name, "gender": c.gender, "age": int(c.age),
+            "name": c.name, "age": int(c.age),
             "character_class": c.character_class, "backstory": c.backstory,
             "strength": int(c.strength), "intelligence": int(c.intelligence),
             "agility": int(c.agility),
