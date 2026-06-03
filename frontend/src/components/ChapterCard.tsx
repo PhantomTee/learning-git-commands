@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Chapter } from "@/lib/genlayer";
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+const ZERO_ADDR = "0x" + "00".repeat(20);
 
 export default function ChapterCard({ chapter }: { chapter: Chapter }) {
-  const hasWinner = chapter.fomo_winner !== ZERO_ADDR;
+  const hasWinner = chapter.fomo_winner.explorer !== ZERO_ADDR;
 
   return (
     <Link
@@ -15,15 +15,20 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
         <h3 className="font-semibold text-amber-300 group-hover:text-amber-200 leading-tight">
           {chapter.title}
         </h3>
-        <span
-          className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-            chapter.active
-              ? "bg-green-900/60 text-green-400"
-              : "bg-gray-800 text-gray-500"
-          }`}
-        >
-          {chapter.active ? "Active" : "Closed"}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+            ⚔ {chapter.difficulty}
+          </span>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              chapter.active
+                ? "bg-green-900/60 text-green-400"
+                : "bg-gray-800 text-gray-500"
+            }`}
+          >
+            {chapter.active ? "Active" : "Closed"}
+          </span>
+        </div>
       </div>
 
       <p className="text-gray-400 text-sm line-clamp-2 mb-3">{chapter.scenario}</p>
@@ -32,7 +37,7 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
         <span>🎲 {chapter.attempt_count} attempts</span>
         {hasWinner && (
           <span className="text-amber-400">
-            ⚡ FOMO: {chapter.fomo_winner.slice(0, 6)}…{chapter.fomo_winner.slice(-4)}
+            ⚡ {chapter.fomo_winner.explorer.slice(0, 6)}…{chapter.fomo_winner.explorer.slice(-4)}
           </span>
         )}
         <span className="ml-auto font-mono">

@@ -4,12 +4,10 @@ import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
 
-const chain = studionet; // chain ID 61999, https://studio.genlayer.com/api
+const chain = studionet;
 
-// Read client — no wallet needed
 export const readClient = createClient({ chain });
 
-// Write client — requires connected wallet (MetaMask)
 export function createWriteClient(address: `0x${string}`) {
   return createClient({
     chain,
@@ -22,13 +20,13 @@ export function createWriteClient(address: `0x${string}`) {
 export const CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
 
-// ── Typed read helpers ───────────────────────────────────────────────────────
+// ── Read helpers ─────────────────────────────────────────────────────────────
 
-export async function getAllChapters() {
+export async function getChapters(offset = 0, limit = 50) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
-    functionName: "get_all_chapters",
-    args: [],
+    functionName: "get_chapters",
+    args: [offset, limit],
   }) as unknown as Promise<Chapter[]>;
 }
 
@@ -40,11 +38,11 @@ export async function getChapter(id: number) {
   }) as unknown as Promise<Chapter>;
 }
 
-export async function getAttempts(chapterId: number) {
+export async function getAttempts(chapterId: number, offset = 0, limit = 50) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_attempts",
-    args: [chapterId],
+    args: [chapterId, offset, limit],
   }) as unknown as Promise<Attempt[]>;
 }
 
@@ -77,16 +75,24 @@ export async function getLeaderboard() {
     address: CONTRACT_ADDRESS,
     functionName: "get_leaderboard",
     args: [],
-  }) as unknown as Promise<Attempt[]>;
+  }) as unknown as Promise<LeaderboardEntry[]>;
 }
 
-// ── Write helpers (return tx hash) ──────────────────────────────────────────
+export async function getUserAttempts(chapterId: number, address: string) {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_user_attempts",
+    args: [chapterId, address],
+  }) as unknown as Promise<number>;
+}
 
-export async function mintPrompts(writeClient: any, amount: number) {
+// ── Write helpers ────────────────────────────────────────────────────────────
+
+export async function mintPrompts(writeClient: any, to: string, amount: number) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "mint_prompts",
-    args: [amount],
+    args: [to, amount],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -94,13 +100,13 @@ export async function mintPrompts(writeClient: any, amount: number) {
 export async function createCharacter(
   writeClient: any,
   name: string,
-  sex: boolean,
+  gender: "male" | "female" | "other",
   age: number
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_character",
-    args: [name, sex, age],
+    args: [name, gender, age],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -109,12 +115,13 @@ export async function createChapter(
   writeClient: any,
   title: string,
   scenario: string,
-  winCondition: string
+  winCondition: string,
+  difficulty: number
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_chapter",
-    args: [title, scenario, winCondition],
+    args: [title, scenario, winCondition, difficulty],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -132,7 +139,7 @@ export async function submitAction(
   }) as unknown as Promise<`0x${string}`>;
 }
 
-// ── Poll for receipt + check execution ──────────────────────────────────────
+// ── Poll for receipt ─────────────────────────────────────────────────────────
 
 export async function waitForResult(txHash: string) {
   const receipt = await readClient.waitForTransactionReceipt({
@@ -147,15 +154,22 @@ export async function waitForResult(txHash: string) {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export interface FomoWinner {
+  explorer: string;
+  roll: number;
+  attempt_index: number;
+}
+
 export interface Chapter {
   id: number;
   creator: string;
   title: string;
   scenario: string;
   win_condition: string;
+  difficulty: number;
   attempt_count: number;
   active: boolean;
-  fomo_winner: string;
+  fomo_winner: FomoWinner;
 }
 
 export interface Attempt {
@@ -164,12 +178,17 @@ export interface Attempt {
   success: boolean;
   roll: number;
   judgment: string;
-  chapter_id?: number;
+}
+
+export interface LeaderboardEntry {
+  chapter_id: number;
+  explorer: string;
+  roll: number;
+  attempt_index: number;
 }
 
 export interface Character {
   name: string;
-  sex: boolean;
   age: number;
   character_class: string;
   backstory: string;

@@ -4,13 +4,12 @@ import { useState } from "react";
 import { Attempt } from "@/lib/genlayer";
 
 interface Props {
-  chapterId: number;
   winCondition: string;
   onSubmit: (action: string) => Promise<Attempt | null>;
   disabled?: boolean;
 }
 
-export default function ActionInput({ chapterId, winCondition, onSubmit, disabled }: Props) {
+export default function ActionInput({ winCondition, onSubmit, disabled }: Props) {
   const [action, setAction] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
@@ -46,6 +45,7 @@ export default function ActionInput({ chapterId, winCondition, onSubmit, disable
           onChange={(e) => setAction(e.target.value)}
           placeholder="Describe your action… be creative, the dungeon master is watching."
           rows={4}
+          maxLength={500}
           disabled={disabled || status === "pending"}
           className="w-full bg-gray-900 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-3 text-sm resize-none outline-none placeholder:text-gray-600 transition-colors disabled:opacity-50"
         />

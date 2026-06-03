@@ -14,7 +14,7 @@ import {
 import ActionInput from "@/components/ActionInput";
 import Link from "next/link";
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+const ZERO_ADDR = "0x" + "00".repeat(20);
 
 export default function ChapterPage() {
   const params = useParams();
@@ -30,7 +30,7 @@ export default function ChapterPage() {
       try {
         const [ch, atts] = await Promise.all([
           getChapter(chapterId),
-          getAttempts(chapterId),
+          getAttempts(chapterId, 0, 50),
         ]);
         setChapter(ch);
         setAttempts(atts);
@@ -62,15 +62,13 @@ export default function ChapterPage() {
     const txHash = await submitAction(writeClient, chapterId, action);
     await waitForResult(txHash);
 
-    // Re-fetch to get the new attempt result
     const [updatedCh, updatedAttempts] = await Promise.all([
       getChapter(chapterId),
-      getAttempts(chapterId),
+      getAttempts(chapterId, 0, 50),
     ]);
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
 
-    // Return the last attempt as the result
     return updatedAttempts[updatedAttempts.length - 1] ?? null;
   }
 
@@ -93,7 +91,7 @@ export default function ChapterPage() {
     );
   }
 
-  const hasWinner = chapter.fomo_winner !== ZERO_ADDR;
+  const hasWinner = chapter.fomo_winner.explorer !== ZERO_ADDR;
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
@@ -104,15 +102,20 @@ export default function ChapterPage() {
         </Link>
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold text-amber-400">{chapter.title}</h1>
-          <span
-            className={`shrink-0 text-xs px-2 py-1 rounded-full font-medium ${
-              chapter.active
-                ? "bg-green-900/60 text-green-400"
-                : "bg-gray-800 text-gray-500"
-            }`}
-          >
-            {chapter.active ? "Active" : "Closed"}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-400">
+              ⚔ Difficulty {chapter.difficulty}
+            </span>
+            <span
+              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                chapter.active
+                  ? "bg-green-900/60 text-green-400"
+                  : "bg-gray-800 text-gray-500"
+              }`}
+            >
+              {chapter.active ? "Active" : "Closed"}
+            </span>
+          </div>
         </div>
         <div className="text-xs text-gray-500 font-mono">
           Creator: {chapter.creator.slice(0, 8)}…{chapter.creator.slice(-6)} ·{" "}
@@ -135,8 +138,8 @@ export default function ChapterPage() {
           <div>
             <div className="font-semibold text-amber-400">FOMO Leader</div>
             <div className="text-sm text-gray-400">
-              Last successful explorer: {chapter.fomo_winner.slice(0, 8)}…
-              {chapter.fomo_winner.slice(-6)}
+              {chapter.fomo_winner.explorer.slice(0, 8)}…{chapter.fomo_winner.explorer.slice(-6)}
+              {" "}· roll {chapter.fomo_winner.roll}
             </div>
           </div>
         </div>
@@ -154,7 +157,6 @@ export default function ChapterPage() {
             </p>
           )}
           <ActionInput
-            chapterId={chapterId}
             winCondition={chapter.win_condition}
             onSubmit={handleAction}
             disabled={!chapter.active}

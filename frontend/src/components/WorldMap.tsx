@@ -19,17 +19,16 @@ interface Props {
   chapters: Chapter[];
 }
 
-// 10×10 grid — chapters occupy cells, players roam
+const ZERO_ADDR = "0x" + "00".repeat(20);
+
 export default function WorldMap({ chapters }: Props) {
   const players = (useQuery(api.world.getActivePlayers) ?? []) as Player[];
 
-  // Map chapters to grid slots (wrap by chapter id)
   const chapterSlots: Record<number, Chapter> = {};
   chapters.forEach((ch) => {
     chapterSlots[ch.id % 100] = ch;
   });
 
-  // Map players to grid positions
   const playerSlots: Record<string, Player[]> = {};
   players.forEach((p) => {
     const key = `${p.x},${p.y}`;
@@ -46,6 +45,7 @@ export default function WorldMap({ chapters }: Props) {
           const chapter = chapterSlots[slot];
           const [cx, cy] = [slot % 10, Math.floor(slot / 10)];
           const playersHere = playerSlots[`${cx},${cy}`] ?? [];
+          const hasWinner = chapter && chapter.fomo_winner.explorer !== ZERO_ADDR;
 
           return (
             <div
@@ -60,7 +60,7 @@ export default function WorldMap({ chapters }: Props) {
             >
               {chapter ? (
                 <Link href={`/chapter/${chapter.id}`} className="absolute inset-0 flex flex-col items-center justify-center p-1 gap-0.5">
-                  <span className="text-lg">🏰</span>
+                  <span className="text-lg">{hasWinner ? "⚡" : "🏰"}</span>
                   <span className="text-amber-300 text-center leading-tight font-medium line-clamp-2">
                     {chapter.title}
                   </span>

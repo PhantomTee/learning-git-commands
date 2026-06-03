@@ -34,8 +34,7 @@ export default function CharacterSheet({ character }: { character: Character }) 
         <div>
           <h2 className="text-lg font-bold text-amber-300">{character.name}</h2>
           <div className="text-sm text-gray-400">
-            {character.character_class} · Age {character.age} ·{" "}
-            {character.sex ? "Female" : "Male"}
+            {character.character_class} · Age {character.age}
           </div>
         </div>
       </div>
