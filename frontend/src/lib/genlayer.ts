@@ -200,9 +200,7 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
   }) as `0x${string}`;
 
   onHash?.(txHash);
-  // Wait up to 90s for COMMITTING — the leader result is available at this stage.
-  // If it times out the tx is still running; caller should surface the explorer link.
-  const receipt = await waitForResult(txHash, TransactionStatus.COMMITTING, 30);
+  const receipt = await waitForResult(txHash, TransactionStatus.ACCEPTED, 80);
 
   const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;
   if (!raw) throw new Error("No result returned from contract");
