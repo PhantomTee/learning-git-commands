@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createWriteClient, createChapter, waitForResult, genToWei } from "@/lib/genlayer";
+import { useToast } from "@/components/Toast";
 
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Trivial", 4: "Easy", 8: "Medium", 12: "Hard", 16: "Deadly", 20: "Legendary",
@@ -24,6 +25,7 @@ export default function CreateChapterPage() {
   });
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
+  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
 
   function update(field: string, value: string | number) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -36,6 +38,7 @@ export default function CreateChapterPage() {
 
     setStatus("pending");
     setError(null);
+    const tid = toastLoading("Publishing chapter…", "Writing your dungeon to the chain");
 
     try {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
@@ -51,10 +54,15 @@ export default function CreateChapterPage() {
         genToWei(form.price_gen)
       );
       await waitForResult(txHash);
+      dismiss(tid);
+      success("Chapter published!", "Explorers can now attempt your dungeon.");
       setStatus("done");
       router.push("/");
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed");
+      dismiss(tid);
+      const msg = err?.message ?? "Transaction failed";
+      setError(msg);
+      toastError("Publish failed", msg);
       setStatus("idle");
     }
   }

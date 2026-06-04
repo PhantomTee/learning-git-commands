@@ -16,6 +16,7 @@ import {
   ClaimablePrize,
 } from "@/lib/genlayer";
 import CharacterSheet from "@/components/CharacterSheet";
+import { useToast } from "@/components/Toast";
 import Link from "next/link";
 
 export default function CharacterPage() {
@@ -28,6 +29,7 @@ export default function CharacterPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({ name: "", gender: "male", age: 25 });
+  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
 
   useEffect(() => {
     async function init() {
@@ -70,6 +72,7 @@ export default function CharacterPage() {
     e.preventDefault();
     setStatus("pending");
     setError(null);
+    const tid = toastLoading("Summoning your character…", "The on-chain AI is choosing your class");
     try {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
@@ -77,17 +80,22 @@ export default function CharacterPage() {
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await createCharacter(writeClient, form.name, form.gender as "male" | "female" | "other", form.age);
       await waitForResult(txHash);
+      dismiss(tid);
+      success("Character created!", "Your legend begins.");
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed");
+      dismiss(tid);
+      const msg = err?.message ?? "Transaction failed";
+      setError(msg);
+      toastError("Character creation failed", msg);
       setStatus("idle");
     }
   }
 
   async function handleClaimPrize(chapterId: number) {
     setStatus("pending");
-    setError(null);
+    const tid = toastLoading("Claiming prize…", "Finalising your victory on-chain");
     try {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
@@ -95,17 +103,20 @@ export default function CharacterPage() {
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await claimPrize(writeClient, chapterId);
       await waitForResult(txHash);
+      dismiss(tid);
+      success("Prize claimed!", "Your GEN has been sent to your wallet.");
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
-      setError(err?.message ?? "Claim failed");
+      dismiss(tid);
+      toastError("Claim failed", err?.message ?? "Transaction failed");
       setStatus("idle");
     }
   }
 
   async function handleWithdrawCreator() {
     setStatus("pending");
-    setError(null);
+    const tid = toastLoading("Withdrawing earnings…", "Transferring your 30% cut");
     try {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
@@ -113,10 +124,13 @@ export default function CharacterPage() {
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await withdrawCreator(writeClient);
       await waitForResult(txHash);
+      dismiss(tid);
+      success("Withdrawn!", "Your creator earnings are in your wallet.");
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
-      setError(err?.message ?? "Withdrawal failed");
+      dismiss(tid);
+      toastError("Withdrawal failed", err?.message ?? "Transaction failed");
       setStatus("idle");
     }
   }

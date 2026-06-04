@@ -158,6 +158,12 @@ main, footer { position: relative; z-index: 1; }
     linear-gradient(135deg, #100d12 0%, #0d0a0e 100%);
 }
 
+/* ── Toast shimmer ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
 /* ── Stat bar ───────────────────────────────────────────────────────────── */
 .stat-bar-track {
   height: 6px;

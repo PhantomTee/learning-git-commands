@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Attempt } from "@/lib/genlayer";
+import { useToast } from "@/components/Toast";
 
 interface Props {
   chapterId: number;
@@ -16,6 +17,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,13 +25,23 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
     setStatus("pending");
     setError(null);
     setResult(null);
+    const tid = toastLoading("The dungeon master deliberates…", "Validators reaching consensus on your fate");
     try {
       const res = await onSubmit(action.trim());
+      dismiss(tid);
+      if (res?.success) {
+        success("Victory!", res.judgment);
+      } else if (res) {
+        toastError("Defeated", res.judgment);
+      }
       setResult(res);
       setAction("");
       setStatus("done");
     } catch (err: any) {
-      setError(err?.message ?? "Something went wrong");
+      dismiss(tid);
+      const msg = err?.message ?? "Something went wrong";
+      setError(msg);
+      toastError("Action failed", msg);
       setStatus("idle");
     }
   }
