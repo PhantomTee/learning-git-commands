@@ -4,10 +4,12 @@ import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
 
-const chain = studionet;
+const chain = studionet; // chain ID 61999, https://studio.genlayer.com/api
 
+// Read client — no wallet needed
 export const readClient = createClient({ chain });
 
+// Write client — requires connected wallet (MetaMask)
 export function createWriteClient(address: `0x${string}`) {
   return createClient({
     chain,
@@ -20,9 +22,10 @@ export function createWriteClient(address: `0x${string}`) {
 export const CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
 
-// ── Read helpers ─────────────────────────────────────────────────────────────
+// ── Typed read helpers ───────────────────────────────────────────────────────
 
-export async function getChapters(offset = 0, limit = 50) {
+/** Paginated chapter list. Pass offset=0, limit=50 for the first page. */
+export async function getChapters(offset: number, limit: number) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_chapters",
@@ -38,7 +41,8 @@ export async function getChapter(id: number) {
   }) as unknown as Promise<Chapter>;
 }
 
-export async function getAttempts(chapterId: number, offset = 0, limit = 50) {
+/** Paginated attempt list. Pass offset=0, limit=50 for the first page. */
+export async function getAttempts(chapterId: number, offset: number, limit: number) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_attempts",
@@ -70,14 +74,7 @@ export async function getPromptBalance(address: string) {
   }) as unknown as Promise<number>;
 }
 
-export async function getLeaderboard() {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_leaderboard",
-    args: [],
-  }) as unknown as Promise<LeaderboardEntry[]>;
-}
-
+/** How many attempts this address has used on a chapter (max 3). */
 export async function getUserAttempts(chapterId: number, address: string) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
@@ -86,7 +83,15 @@ export async function getUserAttempts(chapterId: number, address: string) {
   }) as unknown as Promise<number>;
 }
 
-// ── Write helpers ────────────────────────────────────────────────────────────
+export async function getLeaderboard() {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_leaderboard",
+    args: [],
+  }) as unknown as Promise<LeaderboardEntry[]>;
+}
+
+// ── Write helpers (return tx hash) ──────────────────────────────────────────
 
 export async function mintPrompts(writeClient: any, to: string, amount: number) {
   return writeClient.writeContract({
@@ -97,10 +102,19 @@ export async function mintPrompts(writeClient: any, to: string, amount: number) 
   }) as unknown as Promise<`0x${string}`>;
 }
 
+export async function transferOwnership(writeClient: any, newOwner: string) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "transfer_ownership",
+    args: [newOwner],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
 export async function createCharacter(
   writeClient: any,
   name: string,
-  gender: "male" | "female" | "other",
+  gender: string,
   age: number
 ) {
   return writeClient.writeContract({
@@ -139,7 +153,7 @@ export async function submitAction(
   }) as unknown as Promise<`0x${string}`>;
 }
 
-// ── Poll for receipt ─────────────────────────────────────────────────────────
+// ── Poll for receipt + check execution ──────────────────────────────────────
 
 export async function waitForResult(txHash: string) {
   const receipt = await readClient.waitForTransactionReceipt({
@@ -195,4 +209,10 @@ export interface Character {
   strength: number;
   intelligence: number;
   agility: number;
+}
+
+export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+export function hasWinner(chapter: Chapter): boolean {
+  return chapter.fomo_winner.explorer !== ZERO_ADDR;
 }
