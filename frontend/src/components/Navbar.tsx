@@ -20,7 +20,7 @@ export default function Navbar() {
   const [wrongNetwork, setWrong]    = useState(false);
   const [menuOpen, setMenuOpen]     = useState(false);
   const [switching, setSwitching]   = useState(false);
-  const { success, error: toastErr } = useToast();
+  const { info, error: toastErr } = useToast();
 
   // ── Switch / add the Genlayer studionet in MetaMask ──────────────────────
   const switchNetwork = useCallback(async () => {
@@ -33,7 +33,7 @@ export default function Navbar() {
         params: [{ chainId: STUDIONET_CHAIN_ID }],
       });
       setWrong(false);
-      success("Network switched", "You're now on Genlayer studionet.");
+      info("Network switched", "You're now on Genlayer studionet.");
     } catch (err: any) {
       // 4902 = chain not yet added to MetaMask
       if (err?.code === 4902 || err?.code === -32603) {
@@ -43,7 +43,7 @@ export default function Navbar() {
             params: [STUDIONET_PARAMS],
           });
           setWrong(false);
-          success("Network added", "Genlayer studionet added to MetaMask.");
+          info("Network added", "Genlayer studionet added to MetaMask.");
         } catch {
           toastErr("Cancelled", "Please add Genlayer studionet manually in MetaMask.");
         }
