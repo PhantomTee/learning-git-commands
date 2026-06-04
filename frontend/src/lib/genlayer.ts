@@ -200,7 +200,9 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
   }) as `0x${string}`;
 
   onHash?.(txHash);
-  const receipt = await waitForResult(txHash, TransactionStatus.COMMITTING);
+  // Wait up to 90s for COMMITTING — the leader result is available at this stage.
+  // If it times out the tx is still running; caller should surface the explorer link.
+  const receipt = await waitForResult(txHash, TransactionStatus.COMMITTING, 30);
 
   const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;
   if (!raw) throw new Error("No result returned from contract");
@@ -213,19 +215,20 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
 export async function waitForResult(
   txHash: string,
   status: TransactionStatus = TransactionStatus.ACCEPTED,
+  retries = 80,
 ) {
   let receipt;
   try {
     receipt = await readClient.waitForTransactionReceipt({
       hash: txHash as `0x${string}` & { length: 66 },
       status,
-      retries: 120,
+      retries,
       interval: 3000,
     });
   } catch (err: any) {
     const msg = err?.message ?? "";
     if (msg.includes("Timed out") || msg.includes("timeout")) {
-      throw new Error("Validators are still reaching consensus — please wait a moment and try again.");
+      throw new Error("Still processing — check the explorer for updates.");
     }
     throw err;
   }

@@ -51,6 +51,7 @@ export default function CreateChapterPage() {
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
@@ -79,21 +80,28 @@ export default function CreateChapterPage() {
     if (!eth) return toastError("No wallet", "Install MetaMask to use scenario generation");
 
     setGenerating(true);
-    const tid = toastLoading("Consulting the oracle…", "Paying 10 GEN · AI generating your scenario on-chain");
+    setPendingTxHash(null);
+    const tid = toastLoading("Consulting the oracle…", "Paying 10 GEN · AI generating on-chain — takes ~1 min");
     try {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
-      const gen = await generateScenario(writeClient, (hash) =>
-        toastUpdate(tid, { link: { href: explorerTxUrl(hash), label: "View transaction" } })
-      );
+      let txHash = "";
+      const gen = await generateScenario(writeClient, (hash) => {
+        txHash = hash;
+        setPendingTxHash(hash);
+        toastUpdate(tid, { message: "Transaction submitted — waiting for validators", link: { href: explorerTxUrl(hash), label: "View transaction" } });
+      });
       dismiss(tid);
-      success("Scenario generated!", "Fields prefilled — feel free to edit.");
+      success("Scenario generated!", "Fields prefilled — feel free to edit.", txHash ? { href: explorerTxUrl(txHash), label: "View transaction" } : undefined);
+      setPendingTxHash(null);
       applyScenario(gen);
       setHistory(saveToHistory(gen));
     } catch (err: any) {
       dismiss(tid);
-      toastError("Generation failed", err?.message ?? "Transaction failed");
+      const msg = err?.message ?? "Transaction failed";
+      const link = pendingTxHash ? { href: explorerTxUrl(pendingTxHash), label: "Check on explorer" } : undefined;
+      toastError("Generation failed", msg, link);
     } finally {
       setGenerating(false);
     }
@@ -157,6 +165,21 @@ export default function CreateChapterPage() {
           {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN"}
         </button>
       </div>
+
+      {/* Pending tx banner */}
+      {generating && pendingTxHash && (
+        <a
+          href={explorerTxUrl(pendingTxHash)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-display tracking-wider"
+          style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.3)", color: "#d97706" }}
+        >
+          <span className="animate-pulse">⏳</span>
+          <span className="flex-1">Transaction submitted — validators are computing your scenario</span>
+          <span className="shrink-0 underline">View ↗</span>
+        </a>
+      )}
 
       {/* Scenario history */}
       {history.length > 0 && (
