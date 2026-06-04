@@ -10,7 +10,7 @@ export default async function LeaderboardPage() {
   try {
     [entries, chapters] = await Promise.all([
       getLeaderboard(),
-      getChapters(0, 200),
+      getChapters(0, 50),
     ]);
   } catch { /* RPC unavailable */ }
 

@@ -53,7 +53,7 @@ export default function Navbar() {
     } finally {
       setSwitching(false);
     }
-  }, [success, toastErr]);
+  }, [info, toastErr]);
 
   // ── On mount: read accounts + track chain changes ─────────────────────────
   useEffect(() => {
