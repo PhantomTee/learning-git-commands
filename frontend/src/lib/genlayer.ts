@@ -16,7 +16,7 @@ export function createWriteClient(address: `0x${string}`) {
   });
 }
 
-export const EXPLORER_URL = "https://genlayer-explorer.vercel.app";
+export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
 
 export const CONTRACT_ADDRESS =
