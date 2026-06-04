@@ -211,7 +211,7 @@ export async function waitForResult(txHash: string) {
   try {
     receipt = await readClient.waitForTransactionReceipt({
       hash: txHash as `0x${string}` & { length: 66 },
-      status: TransactionStatus.FINALIZED,
+      status: TransactionStatus.ACCEPTED,
       retries: 120,
       interval: 3000,
     });
