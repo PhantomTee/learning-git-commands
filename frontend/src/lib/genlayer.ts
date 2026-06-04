@@ -218,8 +218,6 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
 }
 
 async function pollForScenarioResult(txHash: string, retries = 80): Promise<GeneratedScenario> {
-  const TERMINAL = new Set(["FINALIZED", "ACCEPTED", "UNDETERMINED", "MAJORITY_DISAGREE"]);
-
   for (let i = 0; i < retries; i++) {
     await new Promise((r) => setTimeout(r, 3000));
     try {
@@ -228,9 +226,8 @@ async function pollForScenarioResult(txHash: string, retries = 80): Promise<Gene
         params: [txHash],
       });
 
-      const status: string = tx?.status ?? "";
-      if (!TERMINAL.has(status)) continue;
-
+      // Return as soon as the leader has computed the result — this happens at
+      // COMMITTING (~7s), well before validators reach consensus or FINALIZED.
       const encoded: string | undefined = tx?.consensus_data?.leader_receipt?.[0]?.result;
       if (!encoded) continue;
 
