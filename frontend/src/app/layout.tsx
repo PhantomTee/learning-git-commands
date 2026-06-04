@@ -38,7 +38,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-stone text-parchment font-body antialiased">
         <Providers>
           <Navbar />
-          <main className="flex-1">{children}</main>
+          {/* pt-[57px] offsets the fixed navbar (1px top line + ~44px bar + 1px bottom line + py-3) */}
+          <main className="flex-1 pt-[57px]">{children}</main>
           <footer className="border-t border-amber-900/30 py-4 text-center text-xs text-amber-900/60 font-display tracking-widest">
             CHAINTALES · ON-CHAIN AI DUNGEON MASTER · GENLAYER
           </footer>

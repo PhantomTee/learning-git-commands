@@ -45,9 +45,23 @@ body::before {
 main, nav, footer { position: relative; z-index: 1; }
 
 /* ── Fantasy scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--color-stone); }
-::-webkit-scrollbar-thumb { background: var(--color-gold-dark); border-radius: 3px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track {
+  background: #0d0a0e;
+  border-left: 1px solid rgba(245,158,11,0.06);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #92400e 0%, #78350f 100%);
+  border-radius: 4px;
+  border: 1px solid rgba(245,158,11,0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #b45309 0%, #92400e 100%);
+}
+::-webkit-scrollbar-corner { background: #0d0a0e; }
+
+/* Firefox scrollbar */
+* { scrollbar-width: thin; scrollbar-color: #92400e #0d0a0e; }
 
 /* ── Stone panel ────────────────────────────────────────────────────────── */
 .panel {

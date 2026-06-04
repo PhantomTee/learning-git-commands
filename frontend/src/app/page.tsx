@@ -20,10 +20,6 @@ export default async function HomePage() {
 
       {/* ── Hero ── */}
       <div className="text-center space-y-5 pt-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-display tracking-widest uppercase mb-2"
-          style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", color: "#a78bfa" }}>
-          ⚡ AI-Judged · On-Chain · Genlayer
-        </div>
         <h1 className="font-display font-black text-4xl sm:text-5xl md:text-6xl tracking-wider"
           style={{ background: "linear-gradient(180deg, #fcd34d 0%, #f59e0b 50%, #d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
           CHAINTALES
