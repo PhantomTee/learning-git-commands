@@ -529,19 +529,35 @@ Return ONLY valid JSON:
         assert paid >= SCENARIO_GEN_FEE, "Must send at least 10 GEN to generate a scenario"
         self._state["protocol_balance"] = self._protocol_balance() + paid
 
+        # Derive a deterministic seed from caller + chapter count so every
+        # validator receives the same theme/difficulty instruction, which
+        # dramatically reduces UNDETERMINED from prompt_comparative.
+        sender_int = int(str(gl.message.sender_address), 16)
+        chapter_count = int(self._chapter_count())
+        seed = (sender_int * 2654435761 + chapter_count * 999983 + 7) % 1000000
+
+        themes = [
+            "ancient dungeon", "haunted forest", "sunken ruins", "mountain fortress",
+            "desert tomb", "volcanic cavern", "frozen tundra", "cursed library",
+            "pirate cove", "cursed village", "sky citadel", "swamp labyrinth",
+        ]
+        difficulty_pool = [5, 7, 8, 10, 11, 12, 13, 15, 16, 18]
+        theme      = themes[seed % len(themes)]
+        difficulty = difficulty_pool[(seed // len(themes)) % len(difficulty_pool)]
+
         def generate() -> str:
             return gl.nondet.exec_prompt(
-                """You are a creative dungeon master for ChainTales, a blockchain RPG.
-Generate a unique, imaginative fantasy chapter. Return ONLY valid JSON:
-{"title": "<evocative title, max 60 chars>", "scenario": "<vivid scene with NPCs, environment, dangers, and stakes, 200-450 chars>", "win_condition": "<clear specific objective the explorer must achieve, 50-150 chars>", "difficulty": <integer 1-20>}
-Vary the theme: dungeons, forests, cities, seas, ruins, underworld, etc.""",
+                f"""You are a dungeon master for ChainTales, a blockchain RPG.
+Write a chapter set in a {theme}. Difficulty: {difficulty}/20.
+Return ONLY this exact JSON (no other text):
+{{"title": "<punchy title, max 60 chars>", "scenario": "<vivid scene with NPCs and danger, 200-380 chars>", "win_condition": "<specific objective to achieve, 50-140 chars>", "difficulty": {difficulty}}}""",
                 response_format="json",
             )
 
         data = self._parse(gl.eq_principle.prompt_comparative(
             generate,
-            "All four JSON fields must be present (title, scenario, win_condition, difficulty) "
-            "with equivalent content — minor wording differences are acceptable",
+            f"Both outputs must describe a {theme} chapter with difficulty {difficulty}. "
+            "title, scenario, and win_condition must convey the same setting and objective.",
         ))
         assert all(k in data for k in ("title", "scenario", "win_condition", "difficulty")), \
             "AI response missing required fields"
@@ -549,7 +565,7 @@ Vary the theme: dungeons, forests, cities, seas, ruins, underworld, etc.""",
             "title":         str(data["title"])[:80],
             "scenario":      str(data["scenario"])[:1000],
             "win_condition": str(data["win_condition"])[:300],
-            "difficulty":    max(1, min(20, int(data["difficulty"]))),
+            "difficulty":    difficulty,   # always use seeded value, ignore AI's
         }
 
     @gl.public.view
