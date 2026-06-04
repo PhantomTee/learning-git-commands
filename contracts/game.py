@@ -538,7 +538,11 @@ Vary the theme: dungeons, forests, cities, seas, ruins, underworld, etc.""",
                 response_format="json",
             )
 
-        data = self._parse(gl.eq_principle.strict_eq(generate))
+        data = self._parse(gl.eq_principle.prompt_comparative(
+            generate,
+            "All four JSON fields must be present (title, scenario, win_condition, difficulty) "
+            "with equivalent content — minor wording differences are acceptable",
+        ))
         assert all(k in data for k in ("title", "scenario", "win_condition", "difficulty")), \
             "AI response missing required fields"
         return {
