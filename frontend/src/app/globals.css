@@ -42,7 +42,7 @@ body::before {
   z-index: 0;
 }
 
-main, nav, footer { position: relative; z-index: 1; }
+main, footer { position: relative; z-index: 1; }
 
 /* ── Fantasy scrollbar ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }

@@ -33,32 +33,37 @@ export default function Navbar() {
     setMenuOpen(false);
   }
 
+  function close() { setMenuOpen(false); }
+
   return (
     <>
-      {/* ── Fixed navbar bar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-amber-900/40"
-        style={{ background: "linear-gradient(180deg, #1a0f12 0%, #120d10 100%)" }}>
+      {/* ── Fixed navbar ── */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 border-b border-amber-900/40"
+        style={{ background: "linear-gradient(180deg,#1a0f12 0%,#120d10 100%)" }}
+      >
         <div className="h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group" onClick={() => setMenuOpen(false)}>
+          <Link href="/" className="group" onClick={close}>
             <span className="font-display font-black text-lg sm:text-xl tracking-widest text-amber-400 group-hover:text-amber-300 transition-colors">
               CHAINTALES
             </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop links */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
-              World Map
-            </Link>
-            <Link href="/chapter/create" className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
-              Create Chapter
-            </Link>
-            <Link href="/character" className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
-              My Character
-            </Link>
+            {[
+              { href: "/", label: "World Map" },
+              { href: "/chapter/create", label: "Create Chapter" },
+              { href: "/character", label: "My Character" },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href}
+                className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
+                {label}
+              </Link>
+            ))}
 
             {address ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50"
@@ -75,7 +80,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile: wallet chip + hamburger */}
+          {/* Mobile: wallet + hamburger */}
           <div className="flex md:hidden items-center gap-3">
             {address && (
               <span className="font-mono text-xs text-green-400 bg-black/40 px-2 py-1 rounded-full border border-green-900/50">
@@ -84,13 +89,13 @@ export default function Navbar() {
             )}
             <button
               onClick={() => setMenuOpen((o) => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
               className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-amber-900/40 hover:border-amber-500/50 transition-colors"
               style={{ background: "rgba(0,0,0,0.4)" }}
-              aria-label="Toggle menu"
             >
-              <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
+              <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 origin-center ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
               <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 ${menuOpen ? "opacity-0 scale-x-0" : ""}`} />
-              <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
+              <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 origin-center ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
             </button>
           </div>
         </div>
@@ -98,21 +103,33 @@ export default function Navbar() {
         <div className="h-px bg-gradient-to-r from-transparent via-amber-900/40 to-transparent" />
       </nav>
 
-      {/* ── Full-screen mobile overlay ── */}
+      {/* ── Mobile overlay (z-60 so it sits above the navbar) ── */}
       <div
-        className={`fixed inset-0 z-40 md:hidden flex flex-col transition-all duration-300 ${
+        className={`fixed inset-0 z-[60] md:hidden flex flex-col transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
-        style={{ background: "rgba(8,5,10,0.97)", backdropFilter: "blur(12px)" }}
-        onClick={(e) => { if (e.target === e.currentTarget) setMenuOpen(false); }}
+        style={{ background: "rgba(8,5,10,0.97)", backdropFilter: "blur(16px)" }}
       >
-        {/* Decorative top gold line */}
-        <div className="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent mt-14" />
+        {/* Header row inside overlay */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-amber-900/30">
+          <Link href="/" onClick={close}
+            className="font-display font-black text-lg tracking-widest text-amber-400">
+            CHAINTALES
+          </Link>
+          {/* Explicit close button */}
+          <button
+            onClick={close}
+            aria-label="Close menu"
+            className="w-10 h-10 flex items-center justify-center rounded-lg border border-amber-900/50 text-amber-400 hover:text-amber-200 hover:border-amber-500/70 transition-colors text-xl"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+          >
+            ✕
+          </button>
+        </div>
 
-        {/* Menu content — centred vertically */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-8">
-          {/* Decorative title */}
-          <p className="font-display text-xs tracking-[0.3em] text-amber-900/60 uppercase mb-6">
+        {/* Nav items — centred */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8">
+          <p className="font-display text-xs tracking-[0.3em] text-amber-900/60 uppercase mb-4">
             Navigation
           </p>
 
@@ -121,23 +138,17 @@ export default function Navbar() {
             { href: "/chapter/create", label: "Create Chapter", icon: "📜" },
             { href: "/character", label: "My Character", icon: "🧙" },
           ].map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMenuOpen(false)}
+            <Link key={href} href={href} onClick={close}
               className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"
-              style={{ border: "1px solid rgba(245,158,11,0.15)", background: "rgba(245,158,11,0.04)" }}
-            >
+              style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.04)" }}>
               <span className="text-xl w-8 text-center">{icon}</span>
               {label}
             </Link>
           ))}
 
           {!address ? (
-            <button
-              onClick={connect}
-              className="btn-gold w-full max-w-xs py-4 rounded-xl text-sm font-display tracking-wider mt-4"
-            >
+            <button onClick={connect}
+              className="btn-gold w-full max-w-xs py-4 rounded-xl text-sm font-display tracking-wider mt-4">
               Connect Wallet
             </button>
           ) : (
@@ -149,7 +160,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Bottom decoration */}
+        {/* Footer */}
         <div className="pb-8 text-center">
           <div className="h-px bg-gradient-to-r from-transparent via-amber-900/30 to-transparent mb-4" />
           <p className="font-display text-xs tracking-widest text-amber-900/40 uppercase">
