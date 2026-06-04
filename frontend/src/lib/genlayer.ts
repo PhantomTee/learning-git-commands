@@ -188,6 +188,22 @@ export async function withdrawCreator(writeClient: any) {
   }) as unknown as Promise<`0x${string}`>;
 }
 
+export async function generateScenario(writeClient: any): Promise<GeneratedScenario> {
+  const txHash = await writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "generate_scenario",
+    args: [],
+    value: BigInt("10000000000000000000"), // 10 GEN in wei
+  }) as `0x${string}`;
+
+  const receipt = await waitForResult(txHash);
+
+  const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;
+  if (!raw) throw new Error("No result returned from contract");
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  return parsed as GeneratedScenario;
+}
+
 // ── Poll for receipt ─────────────────────────────────────────────────────────
 
 export async function waitForResult(txHash: string) {
@@ -262,4 +278,11 @@ export interface Character {
   strength: number;
   intelligence: number;
   agility: number;
+}
+
+export interface GeneratedScenario {
+  title: string;
+  scenario: string;
+  win_condition: string;
+  difficulty: number;
 }

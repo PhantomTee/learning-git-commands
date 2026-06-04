@@ -6,6 +6,7 @@ from genlayer import *
 MAX_CHAPTER_ATTEMPTS = 200
 MAX_USER_ATTEMPTS    = 3
 MIN_PRICE            = u256(10 ** 18)   # 1 GEN in wei
+SCENARIO_GEN_FEE     = u256(10 * 10 ** 18)  # 10 GEN in wei
 
 # Used to send native GEN to any address (EOA or contract)
 @gl.evm.contract_interface
@@ -519,6 +520,33 @@ Return ONLY valid JSON:
                 })
             i += 1
         return result
+
+    # ── Scenario generation ───────────────────────────────────────────
+    @gl.public.write.payable
+    def generate_scenario(self) -> dict:
+        """Pay 10 GEN to have the on-chain AI generate a chapter scenario."""
+        paid = gl.message.value
+        assert paid >= SCENARIO_GEN_FEE, "Must send at least 10 GEN to generate a scenario"
+        self._state["protocol_balance"] = self._protocol_balance() + paid
+
+        def generate() -> str:
+            return gl.nondet.exec_prompt(
+                """You are a creative dungeon master for ChainTales, a blockchain RPG.
+Generate a unique, imaginative fantasy chapter. Return ONLY valid JSON:
+{"title": "<evocative title, max 60 chars>", "scenario": "<vivid scene with NPCs, environment, dangers, and stakes, 200-450 chars>", "win_condition": "<clear specific objective the explorer must achieve, 50-150 chars>", "difficulty": <integer 1-20>}
+Vary the theme: dungeons, forests, cities, seas, ruins, underworld, etc.""",
+                response_format="json",
+            )
+
+        data = self._parse(gl.eq_principle.strict_eq(generate))
+        assert all(k in data for k in ("title", "scenario", "win_condition", "difficulty")), \
+            "AI response missing required fields"
+        return {
+            "title":         str(data["title"])[:80],
+            "scenario":      str(data["scenario"])[:1000],
+            "win_condition": str(data["win_condition"])[:300],
+            "difficulty":    max(1, min(20, int(data["difficulty"]))),
+        }
 
     @gl.public.view
     def get_leaderboard(self) -> list:

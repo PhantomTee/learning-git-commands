@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "@tanstack/react-query": "^5.100.14",
     "convex": "^1.39.1",
     "genlayer-js": "^1.1.8",

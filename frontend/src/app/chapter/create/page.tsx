@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, waitForResult, genToWei } from "@/lib/genlayer";
+import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 
 const DIFFICULTY_LABELS: Record<number, string> = {
@@ -25,10 +25,39 @@ export default function CreateChapterPage() {
   });
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
 
   function update(field: string, value: string | number) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  async function handleGenerate() {
+    const eth = (window as any).ethereum;
+    if (!eth) return toastError("No wallet", "Install MetaMask to use scenario generation");
+
+    setGenerating(true);
+    const tid = toastLoading("Consulting the oracle…", "Paying 10 GEN · AI generating your scenario on-chain");
+    try {
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
+      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      await writeClient.connect("studionet").catch(() => {});
+      const gen = await generateScenario(writeClient);
+      dismiss(tid);
+      success("Scenario generated!", "Fields prefilled — feel free to edit.");
+      setForm((f) => ({
+        ...f,
+        title: gen.title,
+        scenario: gen.scenario,
+        win_condition: gen.win_condition,
+        difficulty: gen.difficulty,
+      }));
+    } catch (err: any) {
+      dismiss(tid);
+      toastError("Generation failed", err?.message ?? "Transaction failed");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,12 +98,25 @@ export default function CreateChapterPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-amber-400">Create a Chapter</h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Write a scenario and win condition. Explorers submit actions —
-          the on-chain AI dungeon master judges every attempt.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-amber-400">Create a Chapter</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Write a scenario and win condition. Explorers submit actions —
+            the on-chain AI dungeon master judges every attempt.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generating || status === "pending"}
+          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-900/50 text-amber-400 hover:border-amber-500/70 hover:text-amber-300 transition-colors text-xs font-display tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ background: "rgba(245,158,11,0.04)" }}
+        >
+          {generating
+            ? <><span className="animate-spin">⏳</span> Consulting oracle…</>
+            : <>✨ Generate for me · 10 GEN</>}
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
