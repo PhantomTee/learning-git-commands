@@ -200,7 +200,7 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
   }) as `0x${string}`;
 
   onHash?.(txHash);
-  const receipt = await waitForResult(txHash);
+  const receipt = await waitForResult(txHash, TransactionStatus.COMMITTING);
 
   const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;
   if (!raw) throw new Error("No result returned from contract");
@@ -210,12 +210,15 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
 
 // ── Poll for receipt ─────────────────────────────────────────────────────────
 
-export async function waitForResult(txHash: string) {
+export async function waitForResult(
+  txHash: string,
+  status: TransactionStatus = TransactionStatus.ACCEPTED,
+) {
   let receipt;
   try {
     receipt = await readClient.waitForTransactionReceipt({
       hash: txHash as `0x${string}` & { length: 66 },
-      status: TransactionStatus.ACCEPTED,
+      status,
       retries: 120,
       interval: 3000,
     });
