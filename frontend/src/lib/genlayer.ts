@@ -203,6 +203,28 @@ export async function withdrawCreator(writeClient: any) {
   }) as unknown as Promise<`0x${string}`>;
 }
 
+// Decode a single scalar or map result from the leader receipt of a finalised tx.
+export async function readLeaderResult(txHash: string): Promise<unknown> {
+  try {
+    const tx = await (readClient as any).request({
+      method: "eth_getTransactionByHash",
+      params: [txHash],
+    });
+    const encoded: string | undefined = tx?.consensus_data?.leader_receipt?.[0]?.result;
+    if (!encoded) return null;
+    const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+    const decoded = abi.calldata.decode(bytes.slice(1));
+    if (typeof decoded === "bigint") return Number(decoded);
+    if (decoded instanceof Map) {
+      const obj: Record<string, unknown> = {};
+      for (const [k, v] of decoded as Map<string, unknown>)
+        obj[String(k)] = typeof v === "bigint" ? Number(v) : v;
+      return obj;
+    }
+    return decoded;
+  } catch { return null; }
+}
+
 export async function generateScenario(writeClient: any, onHash?: (hash: string) => void): Promise<GeneratedScenario> {
   const txHash = await writeClient.writeContract({
     address: CONTRACT_ADDRESS,
