@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createWriteClient, createChapter, generateScenario, waitForResult, readLeaderResult, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
+import { revalidateHome } from "@/app/actions";
 import { useToast } from "@/components/Toast";
 
 const HISTORY_KEY = "scenario_history";
@@ -132,6 +133,7 @@ export default function CreateChapterPage() {
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       const chapterId = await readLeaderResult(txHash);
+      await revalidateHome();
       dismiss(tid);
       success("Chapter published!", "Explorers can now attempt your dungeon.", { href: explorerTxUrl(txHash), label: "View transaction" });
       setStatus("done");
