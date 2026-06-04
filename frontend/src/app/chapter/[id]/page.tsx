@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   getChapter, getAttempts, submitAction, closeChapter, waitForResult,
-  createWriteClient, hasWinner, formatGEN,
+  createWriteClient, hasWinner, formatGEN, explorerTxUrl,
   Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
@@ -20,7 +20,7 @@ export default function ChapterPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
-  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
+  const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
 
   useEffect(() => {
     async function load() {
@@ -40,7 +40,7 @@ export default function ChapterPage() {
     if (eth) eth.request({ method: "eth_accounts" }).then((a: string[]) => { if (a[0]) setWalletAddress(a[0]); });
   }, [chapterId]);
 
-  async function handleAction(action: string): Promise<Attempt | null> {
+  async function handleAction(action: string): Promise<{ attempt: Attempt | null; txHash: string }> {
     const eth = (window as any).ethereum;
     if (!eth) throw new Error("Install MetaMask to submit actions");
     if (!chapter) throw new Error("Chapter not loaded");
@@ -59,7 +59,7 @@ export default function ChapterPage() {
     ]);
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
-    return updatedAttempts[updatedAttempts.length - 1] ?? null;
+    return { attempt: updatedAttempts[updatedAttempts.length - 1] ?? null, txHash };
   }
 
   async function handleClose() {
@@ -72,9 +72,10 @@ export default function ChapterPage() {
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await closeChapter(writeClient, chapterId);
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
-      success("Chapter closed", "The FOMO winner can now claim their prize.");
+      success("Chapter closed", "The FOMO winner can now claim their prize.", { href: explorerTxUrl(txHash), label: "View transaction" });
       const updatedCh = await getChapter(chapterId);
       setChapter(updatedCh);
     } catch (err: any) {

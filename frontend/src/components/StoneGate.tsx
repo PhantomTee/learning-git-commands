@@ -11,18 +11,17 @@ export default function StoneGate() {
   const [phase, setPhase] = useState<Phase>("closed");
 
   useEffect(() => {
-    // Only show on first visit per session
+    // Only show on first visit per session.
+    // Mark immediately so any re-mount (e.g. fast navigation) skips the gate.
     if (sessionStorage.getItem("ct_gate")) {
       setPhase("gone");
       return;
     }
+    sessionStorage.setItem("ct_gate", "1");
 
     const t1 = setTimeout(() => setPhase("reveal"),  120);
     const t2 = setTimeout(() => setPhase("opening"), 1800);
-    const t3 = setTimeout(() => {
-      sessionStorage.setItem("ct_gate", "1");
-      setPhase("gone");
-    }, 2900);
+    const t3 = setTimeout(() => setPhase("gone"),    2900);
 
     return () => [t1, t2, t3].forEach(clearTimeout);
   }, []);

@@ -6,22 +6,26 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 
 type ToastType = "success" | "error" | "info" | "warning" | "loading";
 
+interface ToastLink { href: string; label: string; }
+
 interface Toast {
   id: number;
   type: ToastType;
   title: string;
   message?: string;
+  link?: ToastLink;
   duration?: number;   // ms — 0 = persistent until manually dismissed
 }
 
 interface ToastCtx {
-  toast: (opts: Omit<Toast, "id">) => number;
+  toast:   (opts: Omit<Toast, "id">) => number;
+  update:  (id: number, patch: Partial<Omit<Toast, "id">>) => void;
   dismiss: (id: number) => void;
-  success: (title: string, message?: string) => number;
-  error:   (title: string, message?: string) => number;
-  info:    (title: string, message?: string) => number;
-  warning: (title: string, message?: string) => number;
-  loading: (title: string, message?: string) => number;
+  success: (title: string, message?: string, link?: ToastLink) => number;
+  error:   (title: string, message?: string, link?: ToastLink) => number;
+  info:    (title: string, message?: string, link?: ToastLink) => number;
+  warning: (title: string, message?: string, link?: ToastLink) => number;
+  loading: (title: string, message?: string, link?: ToastLink) => number;
 }
 
 const Ctx = createContext<ToastCtx | null>(null);
@@ -37,8 +41,8 @@ const TYPE_CONFIG: Record<ToastType, { icon: string; border: string; glow: strin
 };
 
 const DEFAULT_DURATION: Record<ToastType, number> = {
-  success: 4000,
-  error:   6000,
+  success: 6000,
+  error:   8000,
   info:    4000,
   warning: 5000,
   loading: 0,     // persistent — caller must dismiss
@@ -100,6 +104,17 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
               {toast.message}
             </p>
           )}
+          {toast.link && (
+            <a
+              href={toast.link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 mt-1.5 text-xs font-display tracking-wider text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+            >
+              {toast.link.label} ↗
+            </a>
+          )}
         </div>
 
         {/* Dismiss X */}
@@ -137,17 +152,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return id;
   }, []);
 
+  const update = useCallback((id: number, patch: Partial<Omit<Toast, "id">>) => {
+    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, ...patch } : t));
+  }, []);
+
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const ctx: ToastCtx = {
-    toast, dismiss,
-    success: (title, message) => toast({ type: "success", title, message }),
-    error:   (title, message) => toast({ type: "error",   title, message }),
-    info:    (title, message) => toast({ type: "info",    title, message }),
-    warning: (title, message) => toast({ type: "warning", title, message }),
-    loading: (title, message) => toast({ type: "loading", title, message }),
+    toast, update, dismiss,
+    success: (title, message, link) => toast({ type: "success", title, message, link }),
+    error:   (title, message, link) => toast({ type: "error",   title, message, link }),
+    info:    (title, message, link) => toast({ type: "info",    title, message, link }),
+    warning: (title, message, link) => toast({ type: "warning", title, message, link }),
+    loading: (title, message, link) => toast({ type: "loading", title, message, link }),
   };
 
   return (

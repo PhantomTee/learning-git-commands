@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei, GeneratedScenario } from "@/lib/genlayer";
+import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei, explorerTxUrl, GeneratedScenario } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 
 const HISTORY_KEY = "scenario_history";
@@ -48,7 +48,7 @@ export default function CreateChapterPage() {
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
+  const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -79,7 +79,9 @@ export default function CreateChapterPage() {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
-      const gen = await generateScenario(writeClient);
+      const gen = await generateScenario(writeClient, (hash) =>
+        toastUpdate(tid, { link: { href: explorerTxUrl(hash), label: "View transaction" } })
+      );
       dismiss(tid);
       success("Scenario generated!", "Fields prefilled — feel free to edit.");
       applyScenario(gen);
@@ -114,9 +116,10 @@ export default function CreateChapterPage() {
         form.difficulty,
         genToWei(form.price_gen)
       );
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
-      success("Chapter published!", "Explorers can now attempt your dungeon.");
+      success("Chapter published!", "Explorers can now attempt your dungeon.", { href: explorerTxUrl(txHash), label: "View transaction" });
       setStatus("done");
       router.push("/");
     } catch (err: any) {

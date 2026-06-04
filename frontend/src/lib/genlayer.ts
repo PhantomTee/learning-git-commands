@@ -16,6 +16,9 @@ export function createWriteClient(address: `0x${string}`) {
   });
 }
 
+export const EXPLORER_URL = "https://genlayer-explorer.vercel.app";
+export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
+
 export const CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
 
@@ -188,7 +191,7 @@ export async function withdrawCreator(writeClient: any) {
   }) as unknown as Promise<`0x${string}`>;
 }
 
-export async function generateScenario(writeClient: any): Promise<GeneratedScenario> {
+export async function generateScenario(writeClient: any, onHash?: (hash: string) => void): Promise<GeneratedScenario> {
   const txHash = await writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "generate_scenario",
@@ -196,6 +199,7 @@ export async function generateScenario(writeClient: any): Promise<GeneratedScena
     value: BigInt("10000000000000000000"), // 10 GEN in wei
   }) as `0x${string}`;
 
+  onHash?.(txHash);
   const receipt = await waitForResult(txHash);
 
   const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;

@@ -12,6 +12,7 @@ import {
   waitForResult,
   createWriteClient,
   formatGEN,
+  explorerTxUrl,
   Character,
   ClaimablePrize,
 } from "@/lib/genlayer";
@@ -29,7 +30,7 @@ export default function CharacterPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({ name: "", gender: "male", age: 25 });
-  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
+  const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
 
   useEffect(() => {
     async function init() {
@@ -79,9 +80,10 @@ export default function CharacterPage() {
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await createCharacter(writeClient, form.name, form.gender as "male" | "female" | "other", form.age);
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
-      success("Character created!", "Your legend begins.");
+      success("Character created!", "Your legend begins.", { href: explorerTxUrl(txHash), label: "View transaction" });
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
@@ -102,9 +104,10 @@ export default function CharacterPage() {
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await claimPrize(writeClient, chapterId);
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
-      success("Prize claimed!", "Your GEN has been sent to your wallet.");
+      success("Prize claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
@@ -123,9 +126,10 @@ export default function CharacterPage() {
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await withdrawCreator(writeClient);
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
-      success("Withdrawn!", "Your creator earnings are in your wallet.");
+      success("Withdrawn!", "Your creator earnings are in your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {

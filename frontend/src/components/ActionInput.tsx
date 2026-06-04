@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Attempt } from "@/lib/genlayer";
+import { Attempt, explorerTxUrl } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 
 interface Props {
   chapterId: number;
   winCondition: string;
   priceGEN?: string;
-  onSubmit: (action: string) => Promise<Attempt | null>;
+  onSubmit: (action: string) => Promise<{ attempt: Attempt | null; txHash: string }>;
   disabled?: boolean;
 }
 
@@ -17,7 +17,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
+  const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,12 +27,14 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
     setResult(null);
     const tid = toastLoading("The dungeon master deliberates…", "Validators reaching consensus — takes 1–3 min");
     try {
-      const res = await onSubmit(action.trim());
+      const { attempt: res, txHash } = await onSubmit(action.trim());
+      toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       dismiss(tid);
+      const link = { href: explorerTxUrl(txHash), label: "View transaction" };
       if (res?.success) {
-        success("Victory!", res.judgment);
+        success("Victory!", res.judgment, link);
       } else if (res) {
-        toastError("Defeated", res.judgment);
+        toastError("Defeated", res.judgment, link);
       }
       setResult(res);
       setAction("");
