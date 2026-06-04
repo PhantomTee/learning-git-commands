@@ -1,26 +1,160 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ── Fantasy theme tokens ───────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-cinzel), Georgia, serif;
+  --font-body: var(--font-cinzel), Georgia, serif;
+  --font-mono: var(--font-geist-mono), monospace;
+
+  --color-stone:        #0d0a0e;
+  --color-stone-light:  #1a1218;
+  --color-stone-mid:    #251820;
+  --color-parchment:    #e8d9b5;
+  --color-parchment-dim:#a89878;
+  --color-gold:         #f59e0b;
+  --color-gold-bright:  #fcd34d;
+  --color-gold-dark:    #92400e;
+  --color-purple:       #7c3aed;
+  --color-purple-dim:   #4c1d95;
+  --color-ember:        #dc2626;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ───────────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-stone);
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+}
+
+/* Subtle stone texture via repeating gradient */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(245,158,11,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(124,58,237,0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+main, nav, footer { position: relative; z-index: 1; }
+
+/* ── Fantasy scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-stone); }
+::-webkit-scrollbar-thumb { background: var(--color-gold-dark); border-radius: 3px; }
+
+/* ── Stone panel ────────────────────────────────────────────────────────── */
+.panel {
+  background: linear-gradient(135deg, #1f1520 0%, #150f18 100%);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(245,158,11,0.08),
+    0 8px 32px rgba(0,0,0,0.6);
+}
+
+.panel-hover {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.panel-hover:hover {
+  border-color: rgba(245,158,11,0.5);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(245,158,11,0.12),
+    0 8px 32px rgba(0,0,0,0.7),
+    0 0 20px rgba(245,158,11,0.08);
+}
+
+/* ── Gold divider ───────────────────────────────────────────────────────── */
+.gold-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent);
+}
+
+/* ── Fantasy button ─────────────────────────────────────────────────────── */
+.btn-gold {
+  background: linear-gradient(135deg, #d97706, #f59e0b, #d97706);
+  color: #0d0a0e;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: all 0.15s;
+}
+.btn-gold:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f59e0b, #fcd34d, #f59e0b);
+  box-shadow: 0 4px 16px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: translateY(-1px);
+}
+.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-stone {
+  background: linear-gradient(135deg, #1f1520, #251820);
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(245,158,11,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: all 0.15s;
+}
+.btn-stone:hover:not(:disabled) {
+  border-color: rgba(245,158,11,0.6);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 12px rgba(245,158,11,0.1);
+}
+.btn-stone:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Fantasy input ──────────────────────────────────────────────────────── */
+.input-stone {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(245,158,11,0.2);
+  color: var(--color-parchment);
+  border-radius: 0.5rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-stone::placeholder { color: rgba(168,152,120,0.4); }
+.input-stone:focus {
+  outline: none;
+  border-color: rgba(245,158,11,0.6);
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.08);
+}
+
+/* ── Difficulty badge ───────────────────────────────────────────────────── */
+.difficulty-badge {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+
+/* ── Map terrain ────────────────────────────────────────────────────────── */
+.map-bg {
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(120,53,15,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(91,33,182,0.08) 0%, transparent 50%),
+    linear-gradient(135deg, #100d12 0%, #0d0a0e 100%);
+}
+
+/* ── Stat bar ───────────────────────────────────────────────────────────── */
+.stat-bar-track {
+  height: 6px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 999px;
+  border: 1px solid rgba(245,158,11,0.1);
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #fcd34d);
+  border-radius: 999px;
+  transition: width 0.6s ease;
 }

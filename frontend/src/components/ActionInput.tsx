@@ -10,7 +10,7 @@ interface Props {
   disabled?: boolean;
 }
 
-export default function ActionInput({ chapterId, winCondition, onSubmit, disabled }: Props) {
+export default function ActionInput({ winCondition, onSubmit, disabled }: Props) {
   const [action, setAction] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
@@ -35,59 +35,70 @@ export default function ActionInput({ chapterId, winCondition, onSubmit, disable
 
   return (
     <div className="space-y-4">
-      <div className="bg-gray-800/50 rounded-lg p-3 text-sm text-gray-300">
-        <span className="text-amber-400 font-medium">Win condition: </span>
-        {winCondition}
+      {/* Win condition */}
+      <div className="p-3 rounded-lg text-sm" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+        <span className="font-display text-xs text-amber-500 tracking-widest uppercase">🎯 Victory Condition — </span>
+        <span className="text-amber-200/70 text-xs">{winCondition}</span>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <textarea
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          placeholder="Describe your action… be creative, the dungeon master is watching."
-          rows={4}
-          disabled={disabled || status === "pending"}
-          className="w-full bg-gray-900 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-3 text-sm resize-none outline-none placeholder:text-gray-600 transition-colors disabled:opacity-50"
-        />
+        <div className="relative">
+          <textarea
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            placeholder="Describe your action… be bold, be clever. The dungeon master watches."
+            rows={4}
+            maxLength={500}
+            disabled={disabled || status === "pending"}
+            className="input-stone w-full px-4 py-3 text-sm resize-none disabled:opacity-50"
+          />
+          <div className="absolute bottom-2 right-3 text-xs text-amber-900/40">{action.length}/500</div>
+        </div>
+
         <button
           type="submit"
           disabled={!action.trim() || disabled || status === "pending"}
-          className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-2.5 rounded-lg transition-colors"
+          className="btn-gold w-full py-3 rounded-lg text-sm font-display tracking-wider"
         >
-          {status === "pending" ? "⏳ The dungeon master deliberates…" : "Submit Action (1 Prompt)"}
+          {status === "pending" ? "⏳ The dungeon master deliberates…" : "⚔ Submit Action (1 Prompt Token)"}
         </button>
       </form>
 
       {status === "pending" && (
-        <div className="text-center text-sm text-gray-400 animate-pulse">
-          Genlayer validators are reaching consensus on your fate…
+        <div className="text-center py-3">
+          <div className="inline-flex items-center gap-2 text-xs text-amber-400/60 font-display tracking-widest animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+            Validators reaching consensus on your fate…
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+          </div>
         </div>
       )}
 
       {result && (
-        <div
-          className={`rounded-xl border p-4 space-y-2 ${
-            result.success
-              ? "border-green-500/40 bg-green-950/30"
-              : "border-red-500/40 bg-red-950/30"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{result.success ? "✅" : "💀"}</span>
-            <div>
-              <div className="font-semibold">
-                {result.success ? "Success!" : "Failure"}
+        <div className="panel overflow-hidden">
+          <div className={`h-1 ${result.success ? "bg-green-500" : "bg-red-600"}`} />
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{result.success ? "✅" : "💀"}</span>
+              <div>
+                <div className="font-display font-bold text-sm" style={{ color: result.success ? "#4ade80" : "#f87171" }}>
+                  {result.success ? "Victory!" : "Defeated"}
+                </div>
+                <div className="text-xs text-amber-900/60 font-display">
+                  d20 rolled: <span className="text-amber-400 font-bold">{result.roll}</span>
+                </div>
               </div>
-              <div className="text-xs text-gray-400">d20 roll: {result.roll}</div>
             </div>
+            <div className="gold-divider" />
+            <p className="text-sm text-amber-200/70 italic leading-relaxed">"{result.judgment}"</p>
           </div>
-          <p className="text-sm text-gray-300 italic">"{result.judgment}"</p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-500/40 bg-red-950/20 p-3 text-sm text-red-400">
-          {error}
+        <div className="p-3 rounded-lg text-sm text-red-400 font-display"
+          style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.3)" }}>
+          ⚠ {error}
         </div>
       )}
     </div>

@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Cinzel, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Navbar from "@/components/Navbar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
   subsets: ["latin"],
+  weight: ["400", "600", "700", "900"],
 });
 
 const geistMono = Geist_Mono({
@@ -19,6 +20,11 @@ export const metadata: Metadata = {
   description: "AI-judged DND adventures on Genlayer",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,12 +33,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${cinzel.variable} ${geistMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-gray-950 text-gray-100">
+      <body className="min-h-full flex flex-col bg-stone text-parchment font-body antialiased">
         <Providers>
           <Navbar />
           <main className="flex-1">{children}</main>
+          <footer className="border-t border-amber-900/30 py-4 text-center text-xs text-amber-900/60 font-display tracking-widest">
+            CHAINTALES · ON-CHAIN AI DUNGEON MASTER · GENLAYER
+          </footer>
         </Providers>
       </body>
     </html>
