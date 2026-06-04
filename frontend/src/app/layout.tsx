@@ -3,6 +3,7 @@ import { Cinzel, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Navbar from "@/components/Navbar";
+import StoneGate from "@/components/StoneGate";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -37,6 +38,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-stone text-parchment font-body antialiased">
         <Providers>
+          <StoneGate />
           <Navbar />
           {/* pt-[57px] offsets the fixed navbar (1px top line + ~44px bar + 1px bottom line + py-3) */}
           <main className="flex-1 pt-[57px]">{children}</main>
