@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei } from "@/lib/genlayer";
+import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei, GeneratedScenario } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
+
+const HISTORY_KEY = "scenario_history";
+const MAX_HISTORY = 10;
 
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Trivial", 4: "Easy", 8: "Medium", 12: "Hard", 16: "Deadly", 20: "Legendary",
@@ -14,6 +17,23 @@ function difficultyLabel(d: number) {
   return DIFFICULTY_LABELS[key];
 }
 
+interface HistoryEntry extends GeneratedScenario {
+  ts: number;
+}
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+  } catch { return []; }
+}
+
+function saveToHistory(entry: GeneratedScenario) {
+  const history = loadHistory();
+  const next: HistoryEntry[] = [{ ...entry, ts: Date.now() }, ...history].slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  return next;
+}
+
 export default function CreateChapterPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -21,15 +41,32 @@ export default function CreateChapterPage() {
     scenario: "",
     win_condition: "",
     difficulty: 10,
-    price_gen: 1,   // price in GEN (min 1)
+    price_gen: 1,
   });
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
+
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
 
   function update(field: string, value: string | number) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function applyScenario(entry: GeneratedScenario) {
+    setForm((f) => ({
+      ...f,
+      title: entry.title,
+      scenario: entry.scenario,
+      win_condition: entry.win_condition,
+      difficulty: entry.difficulty,
+    }));
+    setHistoryOpen(false);
   }
 
   async function handleGenerate() {
@@ -45,13 +82,8 @@ export default function CreateChapterPage() {
       const gen = await generateScenario(writeClient);
       dismiss(tid);
       success("Scenario generated!", "Fields prefilled — feel free to edit.");
-      setForm((f) => ({
-        ...f,
-        title: gen.title,
-        scenario: gen.scenario,
-        win_condition: gen.win_condition,
-        difficulty: gen.difficulty,
-      }));
+      applyScenario(gen);
+      setHistory(saveToHistory(gen));
     } catch (err: any) {
       dismiss(tid);
       toastError("Generation failed", err?.message ?? "Transaction failed");
@@ -98,6 +130,7 @@ export default function CreateChapterPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
+      {/* Header + generate button */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-amber-400">Create a Chapter</h1>
@@ -113,11 +146,51 @@ export default function CreateChapterPage() {
           className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-900/50 text-amber-400 hover:border-amber-500/70 hover:text-amber-300 transition-colors text-xs font-display tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: "rgba(245,158,11,0.04)" }}
         >
-          {generating
-            ? <><span className="animate-spin">⏳</span> Consulting oracle…</>
-            : <>✨ Generate for me · 10 GEN</>}
+          {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN"}
         </button>
       </div>
+
+      {/* Scenario history */}
+      {history.length > 0 && (
+        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(245,158,11,0.18)" }}>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 text-xs font-display tracking-widest uppercase transition-colors hover:bg-amber-900/10"
+            style={{ background: "rgba(245,158,11,0.04)", color: "#d97706" }}
+          >
+            <span>✦ Generation History ({history.length})</span>
+            <span className="text-amber-700">{historyOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {historyOpen && (
+            <div className="divide-y divide-amber-900/20">
+              {history.map((entry, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => applyScenario(entry)}
+                  className="w-full text-left px-4 py-3 hover:bg-amber-900/10 transition-colors group"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-display text-sm text-amber-300 group-hover:text-amber-200 truncate">
+                      {entry.title}
+                    </span>
+                    <span className="shrink-0 text-xs font-display px-2 py-0.5 rounded"
+                      style={{ background: "rgba(245,158,11,0.1)", color: "#b45309" }}>
+                      {entry.difficulty}/20
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/60 mt-0.5 line-clamp-1">{entry.scenario}</p>
+                  <p className="text-xs text-amber-900/40 mt-0.5">
+                    {new Date(entry.ts).toLocaleString()}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1">
@@ -190,7 +263,6 @@ export default function CreateChapterPage() {
           </div>
         </div>
 
-        {/* Price per attempt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-300">Price per Attempt</label>
@@ -232,12 +304,7 @@ export default function CreateChapterPage() {
 
         <button
           type="submit"
-          disabled={
-            status === "pending" ||
-            !form.title ||
-            !form.scenario ||
-            !form.win_condition
-          }
+          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition}
           className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors"
         >
           {status === "pending" ? "⏳ Writing to Genlayer…" : "Publish Chapter"}
