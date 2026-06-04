@@ -47,19 +47,25 @@ export default function CharacterPage() {
   }, []);
 
   async function loadData(addr: string) {
+    // Check character existence first — keep it isolated so a failure in the
+    // secondary calls (balance, prizes) never prevents the character from loading.
     try {
-      const [has, creatorBal, prizes] = await Promise.all([
-        hasCharacter(addr),
+      const has = await hasCharacter(addr);
+      if (has) {
+        const char = await getCharacter(addr);
+        setCharacter(char);
+      }
+    } catch { /* RPC unavailable — don't show create form, just leave loading state */ }
+
+    // Secondary data — failures here are non-critical
+    try {
+      const [creatorBal, prizes] = await Promise.all([
         getCreatorBalance(addr),
         getClaimablePrizes(addr),
       ]);
       setCreatorBalance(Number(creatorBal));
       setClaimablePrizes(prizes);
-      if (has) {
-        const char = await getCharacter(addr);
-        setCharacter(char);
-      }
-    } catch { /* RPC unavailable */ }
+    } catch { /* ignore */ }
   }
 
   async function connect() {
