@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Attempt, explorerTxUrl } from "@/lib/genlayer";
+import { Attempt, explorerTxUrl, normaliseError } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 
 interface Props {
@@ -41,7 +41,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
       setStatus("done");
     } catch (err: any) {
       dismiss(tid);
-      const msg = err?.message ?? "Something went wrong";
+      const msg = normaliseError(err).message;
       setError(msg);
       toastError("Action failed", msg);
       setStatus("idle");

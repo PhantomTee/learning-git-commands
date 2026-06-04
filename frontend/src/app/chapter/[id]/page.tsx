@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   getChapter, getAttempts, submitAction, closeChapter, waitForResult,
-  createWriteClient, hasWinner, formatGEN, explorerTxUrl,
+  createWriteClient, hasWinner, formatGEN, explorerTxUrl, normaliseError,
   Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
@@ -80,7 +80,7 @@ export default function ChapterPage() {
       setChapter(updatedCh);
     } catch (err: any) {
       dismiss(tid);
-      toastError("Failed to close", err?.message ?? "Transaction failed");
+      toastError("Failed to close", normaliseError(err).message);
     } finally {
       setClosing(false);
     }

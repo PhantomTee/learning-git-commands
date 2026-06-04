@@ -13,6 +13,7 @@ import {
   createWriteClient,
   formatGEN,
   explorerTxUrl,
+  normaliseError,
   Character,
   ClaimablePrize,
 } from "@/lib/genlayer";
@@ -88,7 +89,7 @@ export default function CharacterPage() {
       setStatus("idle");
     } catch (err: any) {
       dismiss(tid);
-      const msg = err?.message ?? "Transaction failed";
+      const msg = normaliseError(err).message;
       setError(msg);
       toastError("Character creation failed", msg);
       setStatus("idle");
@@ -112,7 +113,7 @@ export default function CharacterPage() {
       setStatus("idle");
     } catch (err: any) {
       dismiss(tid);
-      toastError("Claim failed", err?.message ?? "Transaction failed");
+      toastError("Claim failed", normaliseError(err).message);
       setStatus("idle");
     }
   }
@@ -134,7 +135,7 @@ export default function CharacterPage() {
       setStatus("idle");
     } catch (err: any) {
       dismiss(tid);
-      toastError("Withdrawal failed", err?.message ?? "Transaction failed");
+      toastError("Withdrawal failed", normaliseError(err).message);
       setStatus("idle");
     }
   }

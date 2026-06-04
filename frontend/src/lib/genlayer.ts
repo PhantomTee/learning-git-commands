@@ -19,6 +19,18 @@ export function createWriteClient(address: `0x${string}`) {
 export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
 
+// Normalise wallet/provider errors into user-readable messages
+export function normaliseError(err: any): Error {
+  const msg: string = err?.message ?? err?.toString() ?? "Unknown error";
+  if (msg.includes("message channel closed") || msg.includes("asynchronous response")) {
+    return new Error("Wallet connection dropped — please try the action again.");
+  }
+  if (msg.includes("User rejected") || msg.includes("user rejected") || msg.includes("4001")) {
+    return new Error("Transaction rejected in wallet.");
+  }
+  return err instanceof Error ? err : new Error(msg);
+}
+
 export const CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
 

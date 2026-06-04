@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei, explorerTxUrl, GeneratedScenario } from "@/lib/genlayer";
+import { createWriteClient, createChapter, generateScenario, waitForResult, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 
 const HISTORY_KEY = "scenario_history";
@@ -99,7 +99,7 @@ export default function CreateChapterPage() {
       setHistory(saveToHistory(gen));
     } catch (err: any) {
       dismiss(tid);
-      const msg = err?.message ?? "Transaction failed";
+      const { message: msg } = normaliseError(err);
       const link = pendingTxHash ? { href: explorerTxUrl(pendingTxHash), label: "Check on explorer" } : undefined;
       toastError("Generation failed", msg, link);
     } finally {
@@ -137,7 +137,7 @@ export default function CreateChapterPage() {
       router.push("/");
     } catch (err: any) {
       dismiss(tid);
-      const msg = err?.message ?? "Transaction failed";
+      const { message: msg } = normaliseError(err);
       setError(msg);
       toastError("Publish failed", msg);
       setStatus("idle");
