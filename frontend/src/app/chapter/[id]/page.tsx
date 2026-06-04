@@ -3,14 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  getChapter,
-  getAttempts,
-  submitAction,
-  waitForResult,
-  createWriteClient,
-  hasWinner,
-  Chapter,
-  Attempt,
+  getChapter, getAttempts, submitAction, waitForResult,
+  createWriteClient, hasWinner, formatGEN,
+  Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
 import Link from "next/link";
@@ -24,144 +19,173 @@ export default function ChapterPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadAttempts(id: number) {
-    return getAttempts(id, 0, 50);
-  }
-
   useEffect(() => {
     async function load() {
       try {
         const [ch, atts] = await Promise.all([
           getChapter(chapterId),
-          loadAttempts(chapterId),
+          getAttempts(chapterId, 0, 50),
         ]);
         setChapter(ch);
         setAttempts(atts);
-      } catch {
-        //
-      } finally {
-        setLoading(false);
-      }
+      } catch { /* RPC unavailable */ }
+      finally { setLoading(false); }
     }
     load();
 
     const eth = (window as any).ethereum;
-    if (eth) {
-      eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
-        if (accs[0]) setWalletAddress(accs[0]);
-      });
-    }
+    if (eth) eth.request({ method: "eth_accounts" }).then((a: string[]) => { if (a[0]) setWalletAddress(a[0]); });
   }, [chapterId]);
 
   async function handleAction(action: string): Promise<Attempt | null> {
     const eth = (window as any).ethereum;
     if (!eth) throw new Error("Install MetaMask to submit actions");
+    if (!chapter) throw new Error("Chapter not loaded");
 
     const accounts = await eth.request({ method: "eth_requestAccounts" });
     setWalletAddress(accounts[0]);
     const writeClient = createWriteClient(accounts[0] as `0x${string}`);
     await writeClient.connect("studionet").catch(() => {});
 
-    const txHash = await submitAction(writeClient, chapterId, action);
+    const txHash = await submitAction(writeClient, chapterId, action, BigInt(chapter.price_per_attempt));
     await waitForResult(txHash);
 
     const [updatedCh, updatedAttempts] = await Promise.all([
       getChapter(chapterId),
-      loadAttempts(chapterId),
+      getAttempts(chapterId, 0, 50),
     ]);
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
-
     return updatedAttempts[updatedAttempts.length - 1] ?? null;
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading chapter…
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-amber-900/60 font-display tracking-widest">Loading chapter…</div>;
   }
 
   if (!chapter) {
     return (
-      <div className="text-center py-24">
-        <p className="text-gray-500">Chapter not found.</p>
-        <Link href="/" className="text-amber-400 hover:underline text-sm mt-2 block">
-          Back to world map
-        </Link>
+      <div className="text-center py-24 space-y-3">
+        <p className="text-amber-900/60 font-display">Chapter not found.</p>
+        <Link href="/" className="text-amber-400 hover:underline text-sm block">← Back to World Map</Link>
       </div>
     );
   }
 
   const winner = hasWinner(chapter);
   const fw = chapter.fomo_winner;
+  const prizeGEN = formatGEN(chapter.prize_pool);
+  const priceGEN = formatGEN(chapter.price_per_attempt);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      {/* Back */}
+      <Link href="/" className="text-xs text-amber-900/60 hover:text-amber-400 font-display tracking-widest uppercase">
+        ← World Map
+      </Link>
+
       {/* Header */}
-      <div className="space-y-2">
-        <Link href="/" className="text-xs text-gray-500 hover:text-amber-400">
-          ← World Map
-        </Link>
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold text-amber-400">{chapter.title}</h1>
-          <span
-            className={`shrink-0 text-xs px-2 py-1 rounded-full font-medium ${
-              chapter.active
-                ? "bg-green-900/60 text-green-400"
-                : "bg-gray-800 text-gray-500"
-            }`}
-          >
-            {chapter.active ? "Active" : "Closed"}
+      <div className="panel p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <h1 className="font-display font-black text-2xl sm:text-3xl text-amber-400 tracking-wider leading-tight">
+            {chapter.title}
+          </h1>
+          <span className={`shrink-0 text-xs px-3 py-1 rounded-full font-display tracking-widest uppercase ${
+            chapter.active ? "bg-green-900/40 text-green-400 border border-green-800/50" : "bg-gray-800/60 text-gray-500 border border-gray-700/50"
+          }`}>
+            {chapter.active ? "● Active" : "● Closed"}
           </span>
         </div>
-        <div className="text-xs text-gray-500 font-mono">
-          Creator: {chapter.creator.slice(0, 8)}…{chapter.creator.slice(-6)} ·{" "}
-          {chapter.attempt_count} attempts · Difficulty {chapter.difficulty}/20
+
+        <div className="gold-divider" />
+
+        {/* Stats strip */}
+        <div className="flex flex-wrap gap-4 text-xs font-display">
+          <div className="text-center">
+            <div className="text-amber-400 font-bold text-base">{chapter.difficulty}/20</div>
+            <div className="text-amber-900/60 uppercase tracking-widest">Difficulty</div>
+          </div>
+          <div className="text-center">
+            <div className="text-amber-400 font-bold text-base">{chapter.attempt_count}</div>
+            <div className="text-amber-900/60 uppercase tracking-widest">Attempts</div>
+          </div>
+          <div className="text-center">
+            <div className="text-amber-400 font-bold text-base">{priceGEN}</div>
+            <div className="text-amber-900/60 uppercase tracking-widest">Per Action</div>
+          </div>
+          {chapter.prize_pool > 0 && (
+            <div className="text-center">
+              <div className="text-amber-300 font-bold text-base">{prizeGEN}</div>
+              <div className="text-amber-900/60 uppercase tracking-widest">Prize Pool</div>
+            </div>
+          )}
+        </div>
+
+        <div className="text-xs text-amber-900/50 font-mono">
+          by {chapter.creator.slice(0, 8)}…{chapter.creator.slice(-6)}
         </div>
       </div>
 
       {/* Scenario */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-          Scenario
-        </h2>
-        <p className="text-gray-300 leading-relaxed">{chapter.scenario}</p>
-        <div className="pt-1 text-xs text-gray-500 border-t border-gray-800">
-          Win condition: {chapter.win_condition}
+      <div className="panel p-5 space-y-3">
+        <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase">Scenario</h2>
+        <p className="text-amber-200/70 leading-relaxed text-sm">{chapter.scenario}</p>
+        <div className="gold-divider" />
+        <div className="text-xs text-amber-900/60">
+          <span className="text-amber-500 font-display uppercase tracking-widest">Win condition — </span>
+          {chapter.win_condition}
         </div>
       </div>
 
-      {/* FOMO winner banner */}
-      {winner && (
-        <div className="border border-amber-500/40 bg-amber-950/20 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl">⚡</span>
-          <div>
-            <div className="font-semibold text-amber-400">FOMO Leader</div>
-            <div className="text-sm text-gray-400">
-              {fw.explorer.slice(0, 8)}…{fw.explorer.slice(-6)}
-              <span className="ml-2 text-amber-300/70">rolled {fw.roll}</span>
+      {/* Prize pool banner */}
+      {chapter.prize_pool > 0 && (
+        <div className="panel p-4 flex items-center gap-4"
+          style={{ border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
+          <span className="text-3xl">🏆</span>
+          <div className="flex-1">
+            <div className="font-display font-bold text-amber-400 text-lg">{prizeGEN} Prize Pool</div>
+            <div className="text-xs text-amber-900/60">
+              {chapter.active
+                ? "Accumulating — beat the FOMO leader to claim it when the chapter closes"
+                : winner && !fw.prize_claimed
+                ? `Claimable by ${fw.explorer.slice(0, 8)}…${fw.explorer.slice(-6)}`
+                : fw.prize_claimed ? "Prize already claimed" : "No winner — pool returned to protocol"}
             </div>
           </div>
         </div>
       )}
 
-      {/* Action submission */}
+      {/* FOMO winner */}
+      {winner && (
+        <div className="panel p-4 flex items-center gap-4"
+          style={{ border: "1px solid rgba(245,158,11,0.3)" }}>
+          <span className="text-3xl">⚡</span>
+          <div>
+            <div className="font-display font-bold text-amber-400">FOMO Leader</div>
+            <div className="text-sm text-amber-200/60">
+              {fw.explorer.slice(0, 8)}…{fw.explorer.slice(-6)}
+              <span className="ml-2 text-amber-900/60">· rolled {fw.roll}</span>
+              {fw.prize_claimed && <span className="ml-2 text-green-500/70">· claimed</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action input */}
       {chapter.active && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-            Submit Your Action
+          <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
+            <span className="gold-divider flex-1" />Submit Your Action<span className="gold-divider flex-1" />
           </h2>
           {!walletAddress && (
-            <p className="text-xs text-gray-500">
-              Connect your wallet to play. You need 1 Prompt token per action.
-              Max 3 attempts per chapter.
+            <p className="text-xs text-amber-900/60 text-center font-display">
+              Connect your wallet to play · {priceGEN} per action · Max 3 attempts per chapter
             </p>
           )}
           <ActionInput
             chapterId={chapterId}
             winCondition={chapter.win_condition}
+            priceGEN={priceGEN}
             onSubmit={handleAction}
             disabled={!chapter.active}
           />
@@ -171,32 +195,24 @@ export default function ChapterPage() {
       {/* Attempts log */}
       {attempts.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-            Explorer Log ({attempts.length})
+          <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
+            <span className="gold-divider flex-1" />Explorer Log ({attempts.length})<span className="gold-divider flex-1" />
           </h2>
           <div className="space-y-3">
             {[...attempts].reverse().map((att, i) => (
-              <div
-                key={i}
-                className={`rounded-lg border p-4 space-y-1.5 ${
-                  att.success
-                    ? "border-green-800/50 bg-green-950/20"
-                    : "border-gray-800 bg-gray-900/50"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div key={i} className={`panel p-4 space-y-2 ${att.success ? "border-green-800/50" : ""}`}
+                style={att.success ? { border: "1px solid rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.04)" } : {}}>
+                <div className="flex items-center gap-2 text-xs text-amber-900/60">
                   <span className={att.success ? "text-green-400" : "text-red-400"}>
                     {att.success ? "✓ Success" : "✗ Fail"}
                   </span>
                   <span>·</span>
-                  <span>d20: {att.roll}</span>
+                  <span>d20: <span className="text-amber-400 font-bold">{att.roll}</span></span>
                   <span>·</span>
-                  <span className="font-mono">
-                    {att.explorer.slice(0, 6)}…{att.explorer.slice(-4)}
-                  </span>
+                  <span className="font-mono">{att.explorer.slice(0, 6)}…{att.explorer.slice(-4)}</span>
                 </div>
-                <p className="text-sm text-gray-400 italic">"{att.action}"</p>
-                <p className="text-sm text-gray-300">{att.judgment}</p>
+                <p className="text-xs text-amber-200/40 italic">"{att.action}"</p>
+                <p className="text-sm text-amber-200/70">{att.judgment}</p>
               </div>
             ))}
           </div>

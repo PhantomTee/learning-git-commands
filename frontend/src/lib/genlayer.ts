@@ -4,28 +4,38 @@ import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
 
-const chain = studionet; // chain ID 61999, https://studio.genlayer.com/api
+const chain = studionet;
 
-// Read client — no wallet needed
 export const readClient = createClient({ chain });
 
-// Write client — requires connected wallet (MetaMask)
 export function createWriteClient(address: `0x${string}`) {
   return createClient({
     chain,
     account: address,
-    provider:
-      typeof window !== "undefined" ? (window as any).ethereum : undefined,
+    provider: typeof window !== "undefined" ? (window as any).ethereum : undefined,
   });
 }
 
 export const CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
 
-// ── Typed read helpers ───────────────────────────────────────────────────────
+// ── GEN token formatting ─────────────────────────────────────────────────────
 
-/** Paginated chapter list. Pass offset=0, limit=50 for the first page. */
-export async function getChapters(offset: number, limit: number) {
+export function formatGEN(wei: number | bigint): string {
+  const n = typeof wei === "bigint" ? Number(wei) : wei;
+  const gen = n / 1e18;
+  if (gen >= 1000) return `${(gen / 1000).toFixed(1)}k GEN`;
+  if (gen >= 1)    return `${gen % 1 === 0 ? gen.toFixed(0) : gen.toFixed(2)} GEN`;
+  return `${(gen * 1000).toFixed(2)} mGEN`;
+}
+
+export function genToWei(gen: number): bigint {
+  return BigInt(Math.floor(gen * 1e18));
+}
+
+// ── Read helpers ─────────────────────────────────────────────────────────────
+
+export async function getChapters(offset = 0, limit = 50) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_chapters",
@@ -41,8 +51,7 @@ export async function getChapter(id: number) {
   }) as unknown as Promise<Chapter>;
 }
 
-/** Paginated attempt list. Pass offset=0, limit=50 for the first page. */
-export async function getAttempts(chapterId: number, offset: number, limit: number) {
+export async function getAttempts(chapterId: number, offset = 0, limit = 50) {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
     functionName: "get_attempts",
@@ -66,23 +75,6 @@ export async function hasCharacter(address: string) {
   }) as unknown as Promise<boolean>;
 }
 
-export async function getPromptBalance(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "prompt_balance",
-    args: [address],
-  }) as unknown as Promise<number>;
-}
-
-/** How many attempts this address has used on a chapter (max 3). */
-export async function getUserAttempts(chapterId: number, address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_user_attempts",
-    args: [chapterId, address],
-  }) as unknown as Promise<number>;
-}
-
 export async function getLeaderboard() {
   return readClient.readContract({
     address: CONTRACT_ADDRESS,
@@ -91,30 +83,44 @@ export async function getLeaderboard() {
   }) as unknown as Promise<LeaderboardEntry[]>;
 }
 
-// ── Write helpers (return tx hash) ──────────────────────────────────────────
-
-export async function mintPrompts(writeClient: any, to: string, amount: number) {
-  return writeClient.writeContract({
+export async function getUserAttempts(chapterId: number, address: string) {
+  return readClient.readContract({
     address: CONTRACT_ADDRESS,
-    functionName: "mint_prompts",
-    args: [to, amount],
-    value: BigInt(0),
-  }) as unknown as Promise<`0x${string}`>;
+    functionName: "get_user_attempts",
+    args: [chapterId, address],
+  }) as unknown as Promise<number>;
 }
 
-export async function transferOwnership(writeClient: any, newOwner: string) {
-  return writeClient.writeContract({
+export async function getPrizePool(chapterId: number) {
+  return readClient.readContract({
     address: CONTRACT_ADDRESS,
-    functionName: "transfer_ownership",
-    args: [newOwner],
-    value: BigInt(0),
-  }) as unknown as Promise<`0x${string}`>;
+    functionName: "get_prize_pool",
+    args: [chapterId],
+  }) as unknown as Promise<number>;
 }
+
+export async function getCreatorBalance(address: string) {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_creator_balance",
+    args: [address],
+  }) as unknown as Promise<number>;
+}
+
+export async function getClaimablePrizes(address: string) {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_claimable_prizes",
+    args: [address],
+  }) as unknown as Promise<ClaimablePrize[]>;
+}
+
+// ── Write helpers ────────────────────────────────────────────────────────────
 
 export async function createCharacter(
   writeClient: any,
   name: string,
-  gender: string,
+  gender: "male" | "female" | "other",
   age: number
 ) {
   return writeClient.writeContract({
@@ -130,12 +136,13 @@ export async function createChapter(
   title: string,
   scenario: string,
   winCondition: string,
-  difficulty: number
+  difficulty: number,
+  pricePerAttemptWei: bigint
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_chapter",
-    args: [title, scenario, winCondition, difficulty],
+    args: [title, scenario, winCondition, difficulty, pricePerAttemptWei],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
@@ -143,17 +150,36 @@ export async function createChapter(
 export async function submitAction(
   writeClient: any,
   chapterId: number,
-  action: string
+  action: string,
+  priceWei: bigint
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "submit_action",
     args: [chapterId, action],
+    value: priceWei,
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function claimPrize(writeClient: any, chapterId: number) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "claim_prize",
+    args: [chapterId],
     value: BigInt(0),
   }) as unknown as Promise<`0x${string}`>;
 }
 
-// ── Poll for receipt + check execution ──────────────────────────────────────
+export async function withdrawCreator(writeClient: any) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "withdraw_creator",
+    args: [],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+// ── Poll for receipt ─────────────────────────────────────────────────────────
 
 export async function waitForResult(txHash: string) {
   const receipt = await readClient.waitForTransactionReceipt({
@@ -168,10 +194,17 @@ export async function waitForResult(txHash: string) {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+export function hasWinner(chapter: Chapter): boolean {
+  return chapter.fomo_winner.explorer !== ZERO_ADDR;
+}
+
 export interface FomoWinner {
   explorer: string;
   roll: number;
   attempt_index: number;
+  prize_claimed: boolean;
 }
 
 export interface Chapter {
@@ -181,8 +214,10 @@ export interface Chapter {
   scenario: string;
   win_condition: string;
   difficulty: number;
+  price_per_attempt: number;
   attempt_count: number;
   active: boolean;
+  prize_pool: number;
   fomo_winner: FomoWinner;
 }
 
@@ -199,6 +234,15 @@ export interface LeaderboardEntry {
   explorer: string;
   roll: number;
   attempt_index: number;
+  prize_pool: number;
+  prize_claimed: boolean;
+}
+
+export interface ClaimablePrize {
+  chapter_id: number;
+  title: string;
+  prize_pool: number;
+  roll: number;
 }
 
 export interface Character {
@@ -209,10 +253,4 @@ export interface Character {
   strength: number;
   intelligence: number;
   agility: number;
-}
-
-export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-
-export function hasWinner(chapter: Chapter): boolean {
-  return chapter.fomo_winner.explorer !== ZERO_ADDR;
 }

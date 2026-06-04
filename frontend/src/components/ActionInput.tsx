@@ -6,11 +6,12 @@ import { Attempt } from "@/lib/genlayer";
 interface Props {
   chapterId: number;
   winCondition: string;
+  priceGEN?: string;
   onSubmit: (action: string) => Promise<Attempt | null>;
   disabled?: boolean;
 }
 
-export default function ActionInput({ winCondition, onSubmit, disabled }: Props) {
+export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled }: Props) {
   const [action, setAction] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
@@ -60,7 +61,7 @@ export default function ActionInput({ winCondition, onSubmit, disabled }: Props)
           disabled={!action.trim() || disabled || status === "pending"}
           className="btn-gold w-full py-3 rounded-lg text-sm font-display tracking-wider"
         >
-          {status === "pending" ? "⏳ The dungeon master deliberates…" : "⚔ Submit Action (1 Prompt Token)"}
+          {status === "pending" ? "⏳ The dungeon master deliberates…" : `⚔ Submit Action${priceGEN ? ` · ${priceGEN}` : ""}`}
         </button>
       </form>
 

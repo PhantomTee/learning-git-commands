@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import {
   getCharacter,
   hasCharacter,
-  getPromptBalance,
+  getCreatorBalance,
+  getClaimablePrizes,
   createCharacter,
-  mintPrompts,
+  claimPrize,
+  withdrawCreator,
   waitForResult,
   createWriteClient,
+  formatGEN,
   Character,
+  ClaimablePrize,
 } from "@/lib/genlayer";
 import CharacterSheet from "@/components/CharacterSheet";
 import Link from "next/link";
@@ -17,7 +21,8 @@ import Link from "next/link";
 export default function CharacterPage() {
   const [address, setAddress] = useState<string | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
-  const [balance, setBalance] = useState<number>(0);
+  const [creatorBalance, setCreatorBalance] = useState<number>(0);
+  const [claimablePrizes, setClaimablePrizes] = useState<ClaimablePrize[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<"idle" | "pending">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -39,18 +44,18 @@ export default function CharacterPage() {
 
   async function loadData(addr: string) {
     try {
-      const [has, bal] = await Promise.all([
+      const [has, creatorBal, prizes] = await Promise.all([
         hasCharacter(addr),
-        getPromptBalance(addr),
+        getCreatorBalance(addr),
+        getClaimablePrizes(addr),
       ]);
-      setBalance(Number(bal));
+      setCreatorBalance(Number(creatorBal));
+      setClaimablePrizes(prizes);
       if (has) {
         const char = await getCharacter(addr);
         setCharacter(char);
       }
-    } catch {
-      //
-    }
+    } catch { /* RPC unavailable */ }
   }
 
   async function connect() {
@@ -70,7 +75,7 @@ export default function CharacterPage() {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
-      const txHash = await createCharacter(writeClient, form.name, form.gender, form.age);
+      const txHash = await createCharacter(writeClient, form.name, form.gender as "male" | "female" | "other", form.age);
       await waitForResult(txHash);
       await loadData(accounts[0]);
       setStatus("idle");
@@ -80,7 +85,7 @@ export default function CharacterPage() {
     }
   }
 
-  async function handleMintPrompts() {
+  async function handleClaimPrize(chapterId: number) {
     setStatus("pending");
     setError(null);
     try {
@@ -88,12 +93,30 @@ export default function CharacterPage() {
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const writeClient = createWriteClient(accounts[0] as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
-      const txHash = await mintPrompts(writeClient, accounts[0], 10);
+      const txHash = await claimPrize(writeClient, chapterId);
       await waitForResult(txHash);
       await loadData(accounts[0]);
       setStatus("idle");
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed");
+      setError(err?.message ?? "Claim failed");
+      setStatus("idle");
+    }
+  }
+
+  async function handleWithdrawCreator() {
+    setStatus("pending");
+    setError(null);
+    try {
+      const eth = (window as any).ethereum;
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
+      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      await writeClient.connect("studionet").catch(() => {});
+      const txHash = await withdrawCreator(writeClient);
+      await waitForResult(txHash);
+      await loadData(accounts[0]);
+      setStatus("idle");
+    } catch (err: any) {
+      setError(err?.message ?? "Withdrawal failed");
       setStatus("idle");
     }
   }
@@ -119,24 +142,65 @@ export default function CharacterPage() {
 
   return (
     <div className="max-w-xl mx-auto px-6 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-amber-400">My Character</h1>
-        <div className="text-sm bg-gray-800 px-3 py-1 rounded-full">
-          <span className="text-gray-400">Prompts: </span>
-          <span className="text-amber-300 font-semibold">{balance}</span>
-        </div>
-      </div>
+      <h1 className="font-display font-black text-2xl text-amber-400 tracking-wider">My Character</h1>
 
       {character ? (
         <>
           <CharacterSheet character={character} />
-          <button
-            onClick={handleMintPrompts}
-            disabled={status === "pending"}
-            className="w-full border border-gray-700 hover:border-amber-500 disabled:opacity-40 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            {status === "pending" ? "⏳ Processing…" : "Mint 10 Prompt Tokens (dev)"}
-          </button>
+
+          {/* ── Claimable prizes notification ── */}
+          {claimablePrizes.length > 0 && (
+            <div className="space-y-2">
+              <p className="font-display text-xs text-amber-400 tracking-widest uppercase flex items-center gap-2">
+                <span className="animate-pulse">🏆</span> You have prizes to claim!
+              </p>
+              {claimablePrizes.map((prize) => (
+                <div key={prize.chapter_id} className="panel p-4 flex items-center justify-between gap-3"
+                  style={{ border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
+                  <div className="min-w-0">
+                    <p className="font-display text-sm text-amber-300 truncate">{prize.title}</p>
+                    <p className="text-xs text-amber-900/60">
+                      Prize pool: <span className="text-amber-400 font-bold">{formatGEN(prize.prize_pool)}</span>
+                      {" · "}rolled {prize.roll}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleClaimPrize(prize.chapter_id)}
+                    disabled={status === "pending"}
+                    className="btn-gold px-4 py-2 rounded-lg text-xs shrink-0"
+                  >
+                    {status === "pending" ? "⏳" : "Claim"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Creator earnings ── */}
+          {creatorBalance > 0 && (
+            <div className="panel p-4 flex items-center justify-between gap-3"
+              style={{ border: "1px solid rgba(245,158,11,0.25)" }}>
+              <div>
+                <p className="font-display text-sm text-amber-300">Creator Earnings</p>
+                <p className="text-xs text-amber-900/60">
+                  Your 30% cut from chapter attempts: <span className="text-amber-400 font-bold">{formatGEN(creatorBalance)}</span>
+                </p>
+              </div>
+              <button
+                onClick={handleWithdrawCreator}
+                disabled={status === "pending"}
+                className="btn-stone px-4 py-2 rounded-lg text-xs shrink-0"
+              >
+                {status === "pending" ? "⏳" : "Withdraw"}
+              </button>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-sm text-red-400 border border-red-500/30 bg-red-950/20 rounded-lg p-3 font-display">
+              ⚠ {error}
+            </div>
+          )}
         </>
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">

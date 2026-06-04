@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, waitForResult } from "@/lib/genlayer";
+import { createWriteClient, createChapter, waitForResult, genToWei } from "@/lib/genlayer";
 
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Trivial", 4: "Easy", 8: "Medium", 12: "Hard", 16: "Deadly", 20: "Legendary",
@@ -20,6 +20,7 @@ export default function CreateChapterPage() {
     scenario: "",
     win_condition: "",
     difficulty: 10,
+    price_gen: 1,   // price in GEN (min 1)
   });
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +47,8 @@ export default function CreateChapterPage() {
         form.title,
         form.scenario,
         form.win_condition,
-        form.difficulty
+        form.difficulty,
+        genToWei(form.price_gen)
       );
       await waitForResult(txHash);
       setStatus("done");
@@ -135,6 +137,40 @@ export default function CreateChapterPage() {
           <div className="flex justify-between text-xs text-gray-600">
             <span>Trivial (1)</span>
             <span>Legendary (20)</span>
+          </div>
+        </div>
+
+        {/* Price per attempt */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-300">Price per Attempt</label>
+            <span className="text-sm font-semibold text-amber-400">{form.price_gen} GEN</span>
+          </div>
+          <p className="text-xs text-gray-500">
+            What explorers pay per action. 60% builds the prize pool · 30% goes to you · 10% protocol.
+          </p>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={form.price_gen}
+            onChange={(e) => update("price_gen", Math.max(1, Number(e.target.value)))}
+            className="w-full bg-gray-900 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-2.5 text-sm outline-none transition-colors"
+          />
+          <div className="p-3 rounded-lg text-xs space-y-1"
+            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+            <div className="flex justify-between text-amber-200/60">
+              <span>🏆 Prize pool (per attempt)</span>
+              <span className="text-amber-400">{(form.price_gen * 0.6).toFixed(2)} GEN</span>
+            </div>
+            <div className="flex justify-between text-amber-200/60">
+              <span>💰 Your earnings (per attempt)</span>
+              <span className="text-amber-400">{(form.price_gen * 0.3).toFixed(2)} GEN</span>
+            </div>
+            <div className="flex justify-between text-amber-200/60">
+              <span>⚙ Protocol (per attempt)</span>
+              <span className="text-amber-400">{(form.price_gen * 0.1).toFixed(2)} GEN</span>
+            </div>
           </div>
         </div>
 
