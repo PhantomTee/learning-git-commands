@@ -24,7 +24,7 @@ export default async function HomePage() {
           style={{ background: "linear-gradient(180deg, #fcd34d 0%, #f59e0b 50%, #d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
           CHAINTALES
         </h1>
-        <p className="text-amber-200/60 max-w-xl mx-auto leading-relaxed text-sm sm:text-base font-display tracking-wide">
+        <p className="text-amber-100/80 max-w-xl mx-auto leading-relaxed text-sm sm:text-base font-display tracking-wide">
           Creators write dungeon chapters. Explorers submit actions.<br className="hidden sm:block" />
           The on-chain AI dungeon master decides your fate.
         </p>
