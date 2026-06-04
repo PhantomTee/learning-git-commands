@@ -67,7 +67,7 @@ export default function CreateChapterPage() {
 
     setStatus("pending");
     setError(null);
-    const tid = toastLoading("Publishing chapter…", "Writing your dungeon to the chain");
+    const tid = toastLoading("Publishing chapter…", "Validators writing to the chain — takes 1–3 min");
 
     try {
       const accounts = await eth.request({ method: "eth_requestAccounts" });

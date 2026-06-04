@@ -207,10 +207,21 @@ export async function generateScenario(writeClient: any): Promise<GeneratedScena
 // ── Poll for receipt ─────────────────────────────────────────────────────────
 
 export async function waitForResult(txHash: string) {
-  const receipt = await readClient.waitForTransactionReceipt({
-    hash: txHash as `0x${string}` & { length: 66 },
-    status: TransactionStatus.FINALIZED,
-  });
+  let receipt;
+  try {
+    receipt = await readClient.waitForTransactionReceipt({
+      hash: txHash as `0x${string}` & { length: 66 },
+      status: TransactionStatus.FINALIZED,
+      retries: 120,
+      interval: 3000,
+    });
+  } catch (err: any) {
+    const msg = err?.message ?? "";
+    if (msg.includes("Timed out") || msg.includes("timeout")) {
+      throw new Error("Validators are still reaching consensus — please wait a moment and try again.");
+    }
+    throw err;
+  }
   if (receipt.txExecutionResultName !== ExecutionResult.FINISHED_WITH_RETURN) {
     throw new Error(`Execution failed: ${receipt.txExecutionResultName}`);
   }

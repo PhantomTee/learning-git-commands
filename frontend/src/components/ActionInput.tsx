@@ -25,7 +25,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
     setStatus("pending");
     setError(null);
     setResult(null);
-    const tid = toastLoading("The dungeon master deliberates…", "Validators reaching consensus on your fate");
+    const tid = toastLoading("The dungeon master deliberates…", "Validators reaching consensus — takes 1–3 min");
     try {
       const res = await onSubmit(action.trim());
       dismiss(tid);
@@ -81,7 +81,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
         <div className="text-center py-3">
           <div className="inline-flex items-center gap-2 text-xs text-amber-400/60 font-display tracking-widest animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-            Validators reaching consensus on your fate…
+            Validators reaching consensus — this takes 1–3 minutes…
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
           </div>
         </div>

@@ -72,7 +72,7 @@ export default function CharacterPage() {
     e.preventDefault();
     setStatus("pending");
     setError(null);
-    const tid = toastLoading("Summoning your character…", "The on-chain AI is choosing your class");
+    const tid = toastLoading("Summoning your character…", "On-chain AI is choosing your class — takes 1–3 min");
     try {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
