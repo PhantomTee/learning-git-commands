@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, generateScenario, waitForResult, readLeaderResult, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
+import Link from "next/link";
+import { createWriteClient, createChapter, generateScenario, waitForResult, readLeaderResult, hasCharacter, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
 import { revalidateHome } from "@/app/actions";
 import { useToast } from "@/components/Toast";
 
@@ -55,10 +56,22 @@ export default function CreateChapterPage() {
   const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [noCharacter, setNoCharacter] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
 
   useEffect(() => {
     setHistory(loadHistory());
+
+    // Check if the connected wallet has a character
+    const eth = (window as any).ethereum;
+    if (!eth) return;
+    eth.request({ method: "eth_accounts" }).then(async (accounts: string[]) => {
+      if (!accounts[0]) return;
+      try {
+        const has = await hasCharacter(accounts[0]);
+        if (!has) setNoCharacter(true);
+      } catch { /* ignore — let them try and the contract will reject */ }
+    });
   }, []);
 
   function update(field: string, value: string | number) {
@@ -133,11 +146,18 @@ export default function CreateChapterPage() {
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       const chapterId = await readLeaderResult(txHash);
+      if (typeof chapterId !== "number") {
+        dismiss(tid);
+        toastError("Publish failed", "Transaction was rejected on-chain — make sure you have a character.", { href: explorerTxUrl(txHash), label: "View transaction" });
+        setStatus("idle");
+        return;
+      }
       await revalidateHome();
       dismiss(tid);
       success("Chapter published!", "Explorers can now attempt your dungeon.", { href: explorerTxUrl(txHash), label: "View transaction" });
+      setNoCharacter(false);
       setStatus("done");
-      router.push(typeof chapterId === "number" ? `/chapter/${chapterId}` : "/");
+      router.push(`/chapter/${chapterId}`);
     } catch (err: any) {
       dismiss(tid);
       const { message: msg } = normaliseError(err);
@@ -168,6 +188,18 @@ export default function CreateChapterPage() {
           {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN"}
         </button>
       </div>
+
+      {/* No character warning */}
+      {noCharacter && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display"
+          style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171" }}>
+          <span>⚠</span>
+          <span className="flex-1">You need a character before creating a chapter.</span>
+          <Link href="/character" className="shrink-0 underline hover:text-red-300 transition-colors">
+            Create one →
+          </Link>
+        </div>
+      )}
 
       {/* Pending tx banner */}
       {generating && pendingTxHash && (
@@ -339,7 +371,7 @@ export default function CreateChapterPage() {
 
         <button
           type="submit"
-          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition}
+          disabled={status === "pending" || noCharacter || !form.title || !form.scenario || !form.win_condition}
           className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors"
         >
           {status === "pending" ? "⏳ Writing to Genlayer…" : "Publish Chapter"}
