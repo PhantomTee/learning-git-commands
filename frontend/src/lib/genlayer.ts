@@ -161,6 +161,15 @@ export async function submitAction(
   }) as unknown as Promise<`0x${string}`>;
 }
 
+export async function closeChapter(writeClient: any, chapterId: number) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "close_chapter",
+    args: [chapterId],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
 export async function claimPrize(writeClient: any, chapterId: number) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,

@@ -7,6 +7,12 @@ MAX_CHAPTER_ATTEMPTS = 200
 MAX_USER_ATTEMPTS    = 3
 MIN_PRICE            = u256(10 ** 18)   # 1 GEN in wei
 
+# Used to send native GEN to any address (EOA or contract)
+@gl.evm.contract_interface
+class _Addr:
+    class View: pass
+    class Write: pass
+
 
 # ── Storage structs ─────────────────────────────────────────────────────────
 
@@ -154,7 +160,7 @@ class ChainTales(gl.Contract):
         balance = self._protocol_balance()
         assert balance > u256(0), "No protocol balance to withdraw"
         self._state["protocol_balance"] = u256(0)
-        gl.transfer(self.owner, balance)
+        _Addr(self.owner).emit_transfer(value=balance)
         return balance
 
     @gl.public.view
@@ -445,7 +451,7 @@ Return ONLY valid JSON:
 
         self.prize_claimed[chapter_id] = True
         self.prize_pools[chapter_id] = u256(0)
-        gl.transfer(winner.explorer, pool)
+        _Addr(winner.explorer).emit_transfer(value=pool)
         return pool
 
     @gl.public.write
@@ -455,7 +461,7 @@ Return ONLY valid JSON:
         balance = self._creator_balance(caller)
         assert balance > u256(0), "No creator balance to withdraw"
         self.creator_balances[caller] = u256(0)
-        gl.transfer(caller, balance)
+        _Addr(caller).emit_transfer(value=balance)
         return balance
 
     # ── Financial views ───────────────────────────────────────────────

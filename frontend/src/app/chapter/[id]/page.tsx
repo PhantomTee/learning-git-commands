@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  getChapter, getAttempts, submitAction, waitForResult,
+  getChapter, getAttempts, submitAction, closeChapter, waitForResult,
   createWriteClient, hasWinner, formatGEN,
   Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
+import { useToast } from "@/components/Toast";
 import Link from "next/link";
 
 export default function ChapterPage() {
@@ -18,6 +19,8 @@ export default function ChapterPage() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [closing, setClosing] = useState(false);
+  const { success, error: toastError, loading: toastLoading, dismiss } = useToast();
 
   useEffect(() => {
     async function load() {
@@ -57,6 +60,29 @@ export default function ChapterPage() {
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
     return updatedAttempts[updatedAttempts.length - 1] ?? null;
+  }
+
+  async function handleClose() {
+    if (!confirm("Close this chapter? Explorers can no longer attempt it. The current FOMO leader will be able to claim the prize pool.")) return;
+    setClosing(true);
+    const tid = toastLoading("Closing chapter…", "Writing the final page on-chain");
+    try {
+      const eth = (window as any).ethereum;
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
+      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      await writeClient.connect("studionet").catch(() => {});
+      const txHash = await closeChapter(writeClient, chapterId);
+      await waitForResult(txHash);
+      dismiss(tid);
+      success("Chapter closed", "The FOMO winner can now claim their prize.");
+      const updatedCh = await getChapter(chapterId);
+      setChapter(updatedCh);
+    } catch (err: any) {
+      dismiss(tid);
+      toastError("Failed to close", err?.message ?? "Transaction failed");
+    } finally {
+      setClosing(false);
+    }
   }
 
   if (loading) {
@@ -168,6 +194,27 @@ export default function ChapterPage() {
               {fw.prize_claimed && <span className="ml-2 text-green-500/70">· claimed</span>}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Creator controls */}
+      {chapter.active && walletAddress?.toLowerCase() === chapter.creator.toLowerCase() && (
+        <div className="panel p-4 flex items-center justify-between gap-3"
+          style={{ border: "1px solid rgba(220,38,38,0.25)", background: "rgba(220,38,38,0.04)" }}>
+          <div>
+            <p className="font-display text-sm text-red-400">Creator Controls</p>
+            <p className="text-xs text-amber-900/60">
+              Closing locks the chapter. The current FOMO leader can then claim the prize pool.
+            </p>
+          </div>
+          <button
+            onClick={handleClose}
+            disabled={closing}
+            className="shrink-0 px-4 py-2 rounded-lg text-xs font-display tracking-wider border border-red-800/50 text-red-400 hover:border-red-600 hover:text-red-300 transition-colors disabled:opacity-40"
+            style={{ background: "rgba(220,38,38,0.08)" }}
+          >
+            {closing ? "⏳ Closing…" : "Close Chapter"}
+          </button>
         </div>
       )}
 

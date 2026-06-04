@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Chapter, hasWinner } from "@/lib/genlayer";
+import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer";
 import Link from "next/link";
 
 interface Player {
@@ -127,6 +127,10 @@ export default function WorldMap({ chapters }: Props) {
                         ⚔ D{ch.difficulty} · {difficultyLabel(ch.difficulty)}
                       </span>
                       <span className="text-xs text-amber-900/60">🎲 {ch.attempt_count} attempts</span>
+                      {ch.prize_pool > 0 && (
+                        <span className="text-xs text-amber-400 font-bold">🏆 {formatGEN(ch.prize_pool)}</span>
+                      )}
+                      <span className="text-xs text-amber-900/50">💰 {formatGEN(ch.price_per_attempt)}</span>
                       {fw && (
                         <span className="text-xs text-amber-400">
                           ⚡ {fw.explorer.slice(0, 6)}…

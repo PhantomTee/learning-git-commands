@@ -3,18 +3,33 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createWriteClient } from "@/lib/genlayer";
+import { useToast } from "@/components/Toast";
+
+const STUDIONET_CHAIN_ID = "0xf22f"; // 61999
 
 export default function Navbar() {
   const [address, setAddress] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { warning } = useToast();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const eth = (window as any).ethereum;
     if (!eth) return;
+
     eth.request({ method: "eth_accounts" }).then((accounts: string[]) => {
       if (accounts[0]) setAddress(accounts[0]);
     });
+
+    function checkNetwork(chainId: string) {
+      if (chainId.toLowerCase() !== STUDIONET_CHAIN_ID) {
+        warning("Wrong network", "Switch MetaMask to Genlayer studionet (chain 61999)");
+      }
+    }
+
+    eth.request({ method: "eth_chainId" }).then(checkNetwork);
+    eth.on?.("chainChanged", checkNetwork);
+    return () => eth.removeListener?.("chainChanged", checkNetwork);
   }, []);
 
   // Lock body scroll when menu is open
@@ -57,6 +72,7 @@ export default function Navbar() {
             {[
               { href: "/", label: "World Map" },
               { href: "/chapter/create", label: "Create Chapter" },
+              { href: "/leaderboard", label: "Leaderboard" },
               { href: "/character", label: "My Character" },
             ].map(({ href, label }) => (
               <Link key={href} href={href}
@@ -136,6 +152,7 @@ export default function Navbar() {
           {[
             { href: "/", label: "World Map", icon: "🗺️" },
             { href: "/chapter/create", label: "Create Chapter", icon: "📜" },
+            { href: "/leaderboard", label: "Leaderboard", icon: "🏆" },
             { href: "/character", label: "My Character", icon: "🧙" },
           ].map(({ href, label, icon }) => (
             <Link key={href} href={href} onClick={close}

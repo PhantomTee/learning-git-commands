@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Chapter, hasWinner } from "@/lib/genlayer";
+import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer";
 
 function difficultyColor(d: number) {
   if (d <= 5)  return "text-green-400 border-green-800/60";
@@ -68,6 +68,16 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
             <span className={`difficulty-badge ${difficultyColor(chapter.difficulty)}`}>
               ⚔ D{chapter.difficulty}
             </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-amber-900/50">
+              💰 {formatGEN(chapter.price_per_attempt)} per action
+            </span>
+            {chapter.prize_pool > 0 && (
+              <span className="text-amber-400 font-display font-bold">
+                🏆 {formatGEN(chapter.prize_pool)}
+              </span>
+            )}
           </div>
         </div>
       </div>
