@@ -222,8 +222,11 @@ export async function waitForResult(txHash: string) {
     }
     throw err;
   }
-  if (receipt.txExecutionResultName !== ExecutionResult.FINISHED_WITH_RETURN) {
-    throw new Error(`Execution failed: ${receipt.txExecutionResultName}`);
+  // Only fail on an explicit error result; undefined means the field isn't
+  // populated on this receipt shape, which is fine — not an execution failure.
+  if (receipt.txExecutionResultName === ExecutionResult.FINISHED_WITH_ERROR) {
+    const leaderErr = (receipt as any).consensus_data?.leader_receipt?.[0]?.error;
+    throw new Error(leaderErr ?? "Contract execution failed");
   }
   return receipt;
 }
