@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "genlayer-js";
+import { createClient, abi } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
 
@@ -212,12 +212,44 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
   }) as `0x${string}`;
 
   onHash?.(txHash);
-  const receipt = await waitForResult(txHash, TransactionStatus.ACCEPTED, 80);
+  // Bypass waitForTransactionReceipt — it crashes on UNDETERMINED transactions.
+  // Poll eth_getTransactionByHash directly and decode the calldata result ourselves.
+  return pollForScenarioResult(txHash);
+}
 
-  const raw = (receipt as any).consensus_data?.leader_receipt?.[0]?.result;
-  if (!raw) throw new Error("No result returned from contract");
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-  return parsed as GeneratedScenario;
+async function pollForScenarioResult(txHash: string, retries = 80): Promise<GeneratedScenario> {
+  const TERMINAL = new Set(["FINALIZED", "ACCEPTED", "UNDETERMINED", "MAJORITY_DISAGREE"]);
+
+  for (let i = 0; i < retries; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const tx = await (readClient as any).request({
+        method: "eth_getTransactionByHash",
+        params: [txHash],
+      });
+
+      const status: string = tx?.status ?? "";
+      if (!TERMINAL.has(status)) continue;
+
+      const encoded: string | undefined = tx?.consensus_data?.leader_receipt?.[0]?.result;
+      if (!encoded) continue;
+
+      // Decode: base64 → bytes → skip 1 header byte → calldata.decode → Map → plain object
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      const decoded = abi.calldata.decode(bytes.slice(1));
+      if (!(decoded instanceof Map)) throw new Error("Unexpected calldata shape");
+
+      const obj: Record<string, unknown> = {};
+      for (const [k, v] of decoded as Map<string, unknown>) {
+        obj[String(k)] = typeof v === "bigint" ? Number(v) : v;
+      }
+      return obj as unknown as GeneratedScenario;
+    } catch (err: any) {
+      if (err?.message?.startsWith("Unexpected calldata")) throw err;
+      // transient network/parse error — keep polling
+    }
+  }
+  throw new Error("Still processing — check the explorer for updates.");
 }
 
 // ── Poll for receipt ─────────────────────────────────────────────────────────
