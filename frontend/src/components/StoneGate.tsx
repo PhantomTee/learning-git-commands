@@ -176,14 +176,6 @@ function GateLogo({ visible, fading }: { visible: boolean; fading: boolean }) {
       <Ornament />
 
       <div className="my-5 text-center px-8 space-y-3">
-        {/* Crest icon */}
-        <div
-          className="text-5xl sm:text-6xl mb-1"
-          style={{ filter: "drop-shadow(0 0 20px rgba(245,158,11,0.65))" }}
-        >
-          🛡️
-        </div>
-
         {/* Title */}
         <h1
           className="font-display font-black tracking-[0.18em] text-4xl sm:text-6xl"
