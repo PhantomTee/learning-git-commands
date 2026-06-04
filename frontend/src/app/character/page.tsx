@@ -250,17 +250,22 @@ export default function CharacterPage() {
                 />
               </div>
               <div className="space-y-1 flex-1">
-                <label htmlFor="char-gender" className="text-sm font-medium text-gray-300">Gender</label>
-                <select
-                  id="char-gender"
-                  value={form.gender}
-                  onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}
-                  className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-2.5 text-sm outline-none transition-colors"
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                <label className="text-sm font-medium text-gray-300">Gender</label>
+                <div className="flex gap-1 mt-0.5">
+                  {(["male", "female", "other"] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, gender: g }))}
+                      className="flex-1 py-2.5 rounded-lg text-xs font-display tracking-wider capitalize transition-colors"
+                      style={form.gender === g
+                        ? { background: "rgba(245,158,11,0.2)", border: "1px solid rgba(245,158,11,0.6)", color: "#fbbf24" }
+                        : { background: "rgba(17,24,39,1)", border: "1px solid rgba(55,65,81,1)", color: "#9ca3af" }}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
