@@ -23,7 +23,12 @@ interface HistoryEntry extends GeneratedScenario {
 
 function loadHistory(): HistoryEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+      (e) => e && typeof e.title === "string" && typeof e.scenario === "string" &&
+             typeof e.win_condition === "string" && typeof e.difficulty === "number"
+    );
   } catch { return []; }
 }
 
@@ -155,25 +160,26 @@ export default function CreateChapterPage() {
 
       {/* Scenario history */}
       {history.length > 0 && (
-        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(245,158,11,0.18)" }}>
+        <div className="rounded-lg" style={{ border: "1px solid rgba(245,158,11,0.18)" }}>
           <button
             type="button"
-            onClick={() => setHistoryOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-4 py-3 text-xs font-display tracking-widest uppercase transition-colors hover:bg-amber-900/10"
-            style={{ background: "rgba(245,158,11,0.04)", color: "#d97706" }}
+            onClick={(e) => { e.stopPropagation(); setHistoryOpen((o) => !o); }}
+            className="w-full flex items-center justify-between px-4 py-3 text-xs font-display tracking-widest uppercase transition-colors hover:bg-amber-900/10 rounded-lg"
+            style={{ background: "rgba(245,158,11,0.04)", color: "#d97706", touchAction: "manipulation" }}
           >
             <span>✦ Generation History ({history.length})</span>
             <span className="text-amber-700">{historyOpen ? "▲" : "▼"}</span>
           </button>
 
           {historyOpen && (
-            <div className="divide-y divide-amber-900/20">
+            <div className="border-t border-amber-900/20">
               {history.map((entry, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => applyScenario(entry)}
-                  className="w-full text-left px-4 py-3 hover:bg-amber-900/10 transition-colors group"
+                  onClick={(e) => { e.stopPropagation(); applyScenario(entry); }}
+                  className="w-full text-left px-4 py-3 hover:bg-amber-900/10 active:bg-amber-900/20 transition-colors group border-b border-amber-900/10 last:border-b-0"
+                  style={{ touchAction: "manipulation" }}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-display text-sm text-amber-300 group-hover:text-amber-200 truncate">
@@ -186,7 +192,7 @@ export default function CreateChapterPage() {
                   </div>
                   <p className="text-xs text-amber-900/60 mt-0.5 line-clamp-1">{entry.scenario}</p>
                   <p className="text-xs text-amber-900/40 mt-0.5">
-                    {new Date(entry.ts).toLocaleString()}
+                    {entry.ts ? new Date(entry.ts).toLocaleString() : ""}
                   </p>
                 </button>
               ))}
