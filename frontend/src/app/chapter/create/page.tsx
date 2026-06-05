@@ -171,9 +171,14 @@ export default function CreateChapterPage() {
           className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-900/50 text-amber-400 hover:border-amber-500/70 hover:text-amber-300 transition-colors text-xs font-display tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: "rgba(245,158,11,0.04)" }}
         >
-          {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN"}
+          {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN (AI draft)"}
         </button>
       </div>
+
+      {/* AI draft notice */}
+      <p className="text-xs text-amber-700/70 -mt-2">
+        Generated content is an AI draft — not stored on-chain until you publish the chapter.
+      </p>
 
       {/* Pending tx banner */}
       {generating && pendingTxHash && (

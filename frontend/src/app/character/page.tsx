@@ -77,7 +77,7 @@ export default function CharacterPage() {
     e.preventDefault();
     setStatus("pending");
     setError(null);
-    const tid = toastLoading("Summoning your character…", "On-chain AI is choosing your class — takes 1–3 min");
+    const tid = toastLoading("Creating character…", "Registering on-chain — takes 1–3 min");
     try {
       const eth = (window as any).ethereum;
       const accounts = await eth.request({ method: "eth_requestAccounts" });
@@ -93,6 +93,14 @@ export default function CharacterPage() {
     } catch (err: any) {
       dismiss(tid);
       const msg = normaliseError(err).message;
+      // If the character was already created (e.g. duplicate submission), show it
+      if (msg.includes("Character already exists") || msg.includes("already exists")) {
+        const eth = (window as any).ethereum;
+        const accounts = await eth.request({ method: "eth_accounts" });
+        if (accounts[0]) await loadData(accounts[0]);
+        setStatus("idle");
+        return;
+      }
       setError(msg);
       toastError("Character creation failed", msg);
       setStatus("idle");
