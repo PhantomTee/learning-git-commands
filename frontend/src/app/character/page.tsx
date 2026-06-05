@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   getCharacter,
-  hasCharacter,
   getCreatorBalance,
   getClaimablePrizes,
   createCharacter,
@@ -47,15 +46,13 @@ export default function CharacterPage() {
   }, []);
 
   async function loadData(addr: string) {
-    // Check character existence first — keep it isolated so a failure in the
-    // secondary calls (balance, prizes) never prevents the character from loading.
+    // Call getCharacter directly — success means character exists and we get
+    // the data in one call. Throws if no character ("Character does not exist")
+    // or RPC unavailable; either way we leave character=null → show create form.
     try {
-      const has = await hasCharacter(addr);
-      if (has) {
-        const char = await getCharacter(addr);
-        setCharacter(char);
-      }
-    } catch { /* RPC unavailable — don't show create form, just leave loading state */ }
+      const char = await getCharacter(addr);
+      setCharacter(char);
+    } catch { /* no character or RPC unavailable */ }
 
     // Secondary data — failures here are non-critical
     try {
