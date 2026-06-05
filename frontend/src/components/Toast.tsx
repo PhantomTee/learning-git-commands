@@ -33,11 +33,11 @@ const Ctx = createContext<ToastCtx | null>(null);
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<ToastType, { icon: string; border: string; glow: string; label: string }> = {
-  success: { icon: "✅", border: "rgba(74,222,128,0.4)",  glow: "rgba(74,222,128,0.12)",  label: "text-green-400"  },
-  error:   { icon: "💀", border: "rgba(220,38,38,0.5)",   glow: "rgba(220,38,38,0.12)",   label: "text-red-400"    },
-  info:    { icon: "📜", border: "rgba(245,158,11,0.4)",  glow: "rgba(245,158,11,0.10)",  label: "text-amber-400"  },
-  warning: { icon: "⚠️", border: "rgba(251,191,36,0.5)",  glow: "rgba(251,191,36,0.12)",  label: "text-yellow-400" },
-  loading: { icon: "⏳", border: "rgba(245,158,11,0.3)",  glow: "rgba(245,158,11,0.08)",  label: "text-amber-300"  },
+  success: { icon: "✓",  border: "rgba(74,222,128,0.4)",  glow: "rgba(74,222,128,0.12)",  label: "text-green-400"  },
+  error:   { icon: "✕",  border: "rgba(220,38,38,0.5)",   glow: "rgba(220,38,38,0.12)",   label: "text-red-400"    },
+  info:    { icon: "i",  border: "rgba(245,158,11,0.4)",  glow: "rgba(245,158,11,0.10)",  label: "text-amber-400"  },
+  warning: { icon: "!",  border: "rgba(251,191,36,0.5)",  glow: "rgba(251,191,36,0.12)",  label: "text-yellow-400" },
+  loading: { icon: "…",  border: "rgba(245,158,11,0.3)",  glow: "rgba(245,158,11,0.08)",  label: "text-amber-300"  },
 };
 
 const DEFAULT_DURATION: Record<ToastType, number> = {

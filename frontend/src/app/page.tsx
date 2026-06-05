@@ -1,4 +1,4 @@
-import { getChapters, Chapter } from "@/lib/genlayer";
+import { getChapters, Chapter } from "@/lib/genlayer-server";
 import ChapterCard from "@/components/ChapterCard";
 import WorldMap from "@/components/WorldMap";
 import Link from "next/link";
@@ -33,11 +33,11 @@ export default async function HomePage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
           <Link href="/chapter/create"
             className="btn-gold px-6 py-3 rounded-lg text-sm font-display tracking-wider inline-block text-center">
-            ⚔ Create a Chapter
+            Create a Chapter
           </Link>
           <Link href="/character"
             className="btn-stone px-6 py-3 rounded-lg text-sm font-display tracking-wider inline-block text-center">
-            🧙 My Character
+            My Character
           </Link>
         </div>
 
@@ -88,7 +88,7 @@ export default async function HomePage() {
 
       {chapters.length === 0 && (
         <div className="panel text-center py-16 px-6 space-y-4">
-          <p className="text-6xl">🏰</p>
+          <p className="font-display text-2xl text-amber-900/30 tracking-widest">CHAINTALES</p>
           <p className="font-display text-amber-400/60 tracking-widest text-sm uppercase">
             The realm awaits its first legend
           </p>

@@ -168,7 +168,7 @@ export default function ChapterPage() {
       {chapter.prize_pool > 0 && (
         <div className="panel p-4 flex items-center gap-4"
           style={{ border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
-          <span className="text-3xl">🏆</span>
+          <span className="font-display font-bold text-amber-400 text-lg">Prize</span>
           <div className="flex-1">
             <div className="font-display font-bold text-amber-400 text-lg">{prizeGEN} Prize Pool</div>
             <div className="text-xs text-amber-900/60">
@@ -186,7 +186,7 @@ export default function ChapterPage() {
       {winner && (
         <div className="panel p-4 flex items-center gap-4"
           style={{ border: "1px solid rgba(245,158,11,0.3)" }}>
-          <span className="text-3xl">⚡</span>
+          <span className="font-display font-bold text-amber-400">Leader</span>
           <div>
             <div className="font-display font-bold text-amber-400">FOMO Leader</div>
             <div className="text-sm text-amber-200/60">
@@ -214,7 +214,7 @@ export default function ChapterPage() {
             className="shrink-0 px-4 py-2 rounded-lg text-xs font-display tracking-wider border border-red-800/50 text-red-400 hover:border-red-600 hover:text-red-300 transition-colors disabled:opacity-40"
             style={{ background: "rgba(220,38,38,0.08)" }}
           >
-            {closing ? "⏳ Closing…" : "Close Chapter"}
+            {closing ? "Closing…" : "Close Chapter"}
           </button>
         </div>
       )}
@@ -240,27 +240,39 @@ export default function ChapterPage() {
         </div>
       )}
 
-      {/* Attempts log */}
+      {/* Attempt feed */}
       {attempts.length > 0 && (
         <div className="space-y-3">
           <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
-            <span className="gold-divider flex-1" />Explorer Log ({attempts.length})<span className="gold-divider flex-1" />
+            <span className="gold-divider flex-1" />Chronicle ({attempts.length})<span className="gold-divider flex-1" />
           </h2>
           <div className="space-y-3">
             {[...attempts].reverse().map((att, i) => (
-              <div key={i} className={`panel p-4 space-y-2 ${att.success ? "border-green-800/50" : ""}`}
-                style={att.success ? { border: "1px solid rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.04)" } : {}}>
-                <div className="flex items-center gap-2 text-xs text-amber-900/60">
-                  <span className={att.success ? "text-green-400" : "text-red-400"}>
-                    {att.success ? "✓ Success" : "✗ Fail"}
+              <div key={i} className="panel p-4 space-y-2"
+                style={att.success
+                  ? { border: "1px solid rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.03)" }
+                  : { border: "1px solid rgba(245,158,11,0.08)" }}>
+                {/* Explorer + roll badge */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-xs text-amber-900/50">
+                    {att.explorer.slice(0, 6)}…{att.explorer.slice(-4)}
                   </span>
-                  <span>·</span>
-                  <span>d20: <span className="text-amber-400 font-bold">{att.roll}</span></span>
-                  <span>·</span>
-                  <span className="font-mono">{att.explorer.slice(0, 6)}…{att.explorer.slice(-4)}</span>
+                  <div className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-sm font-display font-black border-2 ${
+                    att.success
+                      ? "border-green-500/50 text-green-400 bg-green-950/40"
+                      : "border-red-900/40 text-red-400/70 bg-red-950/20"
+                  }`}>
+                    {att.roll}
+                  </div>
                 </div>
-                <p className="text-xs text-amber-200/40 italic">"{att.action}"</p>
-                <p className="text-sm text-amber-200/70">{att.judgment}</p>
+                {/* Action quote */}
+                <p className="text-xs text-amber-200/40 italic border-l-2 border-amber-900/30 pl-2">
+                  "{att.action}"
+                </p>
+                {/* Judgment — the story */}
+                <p className={`text-sm leading-relaxed ${att.success ? "text-green-300/80" : "text-amber-200/60"}`}>
+                  {att.judgment}
+                </p>
               </div>
             ))}
           </div>

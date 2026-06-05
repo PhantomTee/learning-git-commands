@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer";
+import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer-server";
 
 function difficultyColor(d: number) {
   if (d <= 5)  return { color: "#4ade80", border: "rgba(74,222,128,0.4)"  };
@@ -58,23 +58,22 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
           {winner && (
             <div className="flex items-center gap-2 p-2 rounded-lg text-xs"
               style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
-              <span>⚡</span>
               <span className="text-amber-400 font-display">FOMO Leader:</span>
               <span className="font-mono text-amber-200">{fw.explorer.slice(0, 6)}…{fw.explorer.slice(-4)}</span>
               <span className="text-amber-500/80 ml-auto">d{fw.roll}</span>
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-amber-300/70">
-            <span>🎲 {chapter.attempt_count} attempts</span>
+            <span>{chapter.attempt_count} attempts</span>
             <span className="text-xs px-2 py-0.5 rounded-full"
               style={{ color: dc.color, border: `1px solid ${dc.border}`, background: `${dc.border.replace("0.4","0.06")}` }}>
-              ⚔ D{chapter.difficulty}
+              D{chapter.difficulty}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-amber-300/60">💰 {formatGEN(chapter.price_per_attempt)} per action</span>
+            <span className="text-amber-300/60">{formatGEN(chapter.price_per_attempt)} per action</span>
             {chapter.prize_pool > 0 && (
-              <span className="text-amber-300 font-display font-bold">🏆 {formatGEN(chapter.prize_pool)}</span>
+              <span className="text-amber-300 font-display font-bold">{formatGEN(chapter.prize_pool)} prize</span>
             )}
           </div>
         </div>

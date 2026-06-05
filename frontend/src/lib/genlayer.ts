@@ -1,25 +1,20 @@
 "use client";
 
+export * from "./genlayer-server";
+
 import { createClient, abi } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import { TransactionStatus, ExecutionResult } from "genlayer-js/types";
-
-const chain = studionet;
-
-export const readClient = createClient({ chain });
+import { CONTRACT_ADDRESS, readClient, GeneratedScenario } from "./genlayer-server";
 
 export function createWriteClient(address: `0x${string}`) {
   return createClient({
-    chain,
+    chain: studionet,
     account: address,
     provider: typeof window !== "undefined" ? (window as any).ethereum : undefined,
   });
 }
 
-export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
-export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
-
-// Normalise wallet/provider errors into user-readable messages
 export function normaliseError(err: any): Error {
   const msg: string = err?.message ?? err?.toString() ?? "Unknown error";
   if (msg.includes("message channel closed") || msg.includes("asynchronous response")) {
@@ -30,106 +25,6 @@ export function normaliseError(err: any): Error {
   }
   return err instanceof Error ? err : new Error(msg);
 }
-
-export const CONTRACT_ADDRESS = "0xc03A027E277a7874174b9c41a63137F3958EFd86" as `0x${string}`;
-
-// ── GEN token formatting ─────────────────────────────────────────────────────
-
-export function formatGEN(wei: number | bigint): string {
-  const n = typeof wei === "bigint" ? Number(wei) : wei;
-  const gen = n / 1e18;
-  if (gen >= 1000) return `${(gen / 1000).toFixed(1)}k GEN`;
-  if (gen >= 1)    return `${gen % 1 === 0 ? gen.toFixed(0) : gen.toFixed(2)} GEN`;
-  return `${(gen * 1000).toFixed(2)} mGEN`;
-}
-
-export function genToWei(gen: number): bigint {
-  return BigInt(Math.floor(gen * 1e18));
-}
-
-// ── Read helpers ─────────────────────────────────────────────────────────────
-
-export async function getChapters(offset = 0, limit = 50) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_chapters",
-    args: [offset, limit],
-  }) as unknown as Promise<Chapter[]>;
-}
-
-export async function getChapter(id: number) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_chapter",
-    args: [id],
-  }) as unknown as Promise<Chapter>;
-}
-
-export async function getAttempts(chapterId: number, offset = 0, limit = 50) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_attempts",
-    args: [chapterId, offset, limit],
-  }) as unknown as Promise<Attempt[]>;
-}
-
-export async function getCharacter(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_character",
-    args: [address],
-  }) as unknown as Promise<Character>;
-}
-
-export async function hasCharacter(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "has_character",
-    args: [address],
-  }) as unknown as Promise<boolean>;
-}
-
-export async function getLeaderboard() {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_leaderboard",
-    args: [],
-  }) as unknown as Promise<LeaderboardEntry[]>;
-}
-
-export async function getUserAttempts(chapterId: number, address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_user_attempts",
-    args: [chapterId, address],
-  }) as unknown as Promise<number>;
-}
-
-export async function getPrizePool(chapterId: number) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_prize_pool",
-    args: [chapterId],
-  }) as unknown as Promise<number>;
-}
-
-export async function getCreatorBalance(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_creator_balance",
-    args: [address],
-  }) as unknown as Promise<number>;
-}
-
-export async function getClaimablePrizes(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_claimable_prizes",
-    args: [address],
-  }) as unknown as Promise<ClaimablePrize[]>;
-}
-
-// ── Write helpers ────────────────────────────────────────────────────────────
 
 export async function createCharacter(
   writeClient: any,
@@ -202,7 +97,6 @@ export async function withdrawCreator(writeClient: any) {
   }) as unknown as Promise<`0x${string}`>;
 }
 
-// Decode a single scalar or map result from the leader receipt of a finalised tx.
 export async function readLeaderResult(txHash: string): Promise<unknown> {
   try {
     const tx = await (readClient as any).request({
@@ -233,8 +127,6 @@ export async function generateScenario(writeClient: any, onHash?: (hash: string)
   }) as `0x${string}`;
 
   onHash?.(txHash);
-  // Bypass waitForTransactionReceipt — it crashes on UNDETERMINED transactions.
-  // Poll eth_getTransactionByHash directly and decode the calldata result ourselves.
   return pollForScenarioResult(txHash);
 }
 
@@ -247,12 +139,9 @@ async function pollForScenarioResult(txHash: string, retries = 80): Promise<Gene
         params: [txHash],
       });
 
-      // Return as soon as the leader has computed the result — this happens at
-      // COMMITTING (~7s), well before validators reach consensus or FINALIZED.
       const encoded: string | undefined = tx?.consensus_data?.leader_receipt?.[0]?.result;
       if (!encoded) continue;
 
-      // Decode: base64 → bytes → skip 1 header byte → calldata.decode → Map → plain object
       const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
       const decoded = abi.calldata.decode(bytes.slice(1));
       if (!(decoded instanceof Map)) throw new Error("Unexpected calldata shape");
@@ -264,13 +153,68 @@ async function pollForScenarioResult(txHash: string, retries = 80): Promise<Gene
       return obj as unknown as GeneratedScenario;
     } catch (err: any) {
       if (err?.message?.startsWith("Unexpected calldata")) throw err;
-      // transient network/parse error — keep polling
     }
   }
   throw new Error("Still processing — check the explorer for updates.");
 }
 
-// ── Poll for receipt ─────────────────────────────────────────────────────────
+// ── Creator NFT ───────────────────────────────────────────────────────────────
+
+export const NFT_MINT_PRICE = BigInt("5000000000000000000"); // 5 GEN in wei
+
+export async function mintCreatorNft(writeClient: any) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "mint_creator_nft",
+    args: [],
+    value: NFT_MINT_PRICE,
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function adminMintNft(writeClient: any, to: string) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "admin_mint_nft",
+    args: [to],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function listNft(writeClient: any, tokenId: number, priceWei: bigint) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "list_nft",
+    args: [tokenId, priceWei],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function delistNft(writeClient: any, tokenId: number) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "delist_nft",
+    args: [tokenId],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function buyNft(writeClient: any, tokenId: number, priceWei: bigint) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "buy_nft",
+    args: [tokenId],
+    value: priceWei,
+  }) as unknown as Promise<`0x${string}`>;
+}
+
+export async function transferNft(writeClient: any, tokenId: number, to: string) {
+  return writeClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "transfer_nft",
+    args: [tokenId, to],
+    value: BigInt(0),
+  }) as unknown as Promise<`0x${string}`>;
+}
 
 export async function waitForResult(
   txHash: string,
@@ -292,81 +236,9 @@ export async function waitForResult(
     }
     throw err;
   }
-  // Only fail on an explicit error result; undefined means the field isn't
-  // populated on this receipt shape, which is fine — not an execution failure.
   if (receipt.txExecutionResultName === ExecutionResult.FINISHED_WITH_ERROR) {
     const leaderErr = (receipt as any).consensus_data?.leader_receipt?.[0]?.error;
     throw new Error(leaderErr ?? "Contract execution failed");
   }
   return receipt;
-}
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-
-export function hasWinner(chapter: Chapter): boolean {
-  return chapter.fomo_winner.explorer !== ZERO_ADDR;
-}
-
-export interface FomoWinner {
-  explorer: string;
-  roll: number;
-  attempt_index: number;
-  prize_claimed: boolean;
-}
-
-export interface Chapter {
-  id: number;
-  creator: string;
-  title: string;
-  scenario: string;
-  win_condition: string;
-  difficulty: number;
-  price_per_attempt: number;
-  attempt_count: number;
-  active: boolean;
-  prize_pool: number;
-  fomo_winner: FomoWinner;
-}
-
-export interface Attempt {
-  explorer: string;
-  action: string;
-  success: boolean;
-  roll: number;
-  judgment: string;
-}
-
-export interface LeaderboardEntry {
-  chapter_id: number;
-  explorer: string;
-  roll: number;
-  attempt_index: number;
-  prize_pool: number;
-  prize_claimed: boolean;
-}
-
-export interface ClaimablePrize {
-  chapter_id: number;
-  title: string;
-  prize_pool: number;
-  roll: number;
-}
-
-export interface Character {
-  name: string;
-  age: number;
-  character_class: string;
-  backstory: string;
-  strength: number;
-  intelligence: number;
-  agility: number;
-}
-
-export interface GeneratedScenario {
-  title: string;
-  scenario: string;
-  win_condition: string;
-  difficulty: number;
 }

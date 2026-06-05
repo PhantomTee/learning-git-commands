@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { createWriteClient } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const STUDIONET_CHAIN_ID = "0xf22f"; // 61999
 
@@ -21,6 +22,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen]     = useState(false);
   const [switching, setSwitching]   = useState(false);
   const { info, error: toastErr } = useToast();
+  const { count: notifCount, items: notifItems, markAllRead } = useNotifications(address);
 
   // ── Switch / add the Genlayer studionet in MetaMask ──────────────────────
   const switchNetwork = useCallback(async () => {
@@ -112,7 +114,7 @@ export default function Navbar() {
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-800/60 hover:border-red-600 transition-colors text-xs font-display tracking-wider"
           style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}
         >
-          {switching ? "⏳ Switching…" : "⚠ Switch to Genlayer"}
+          {switching ? "Switching…" : "Switch to Genlayer"}
         </button>
       );
     }
@@ -147,7 +149,8 @@ export default function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
             {[
-              { href: "/",              label: "World Map"      },
+              { href: "/",               label: "World Map"      },
+              { href: "/marketplace",   label: "Marketplace"    },
               { href: "/chapter/create",label: "Create Chapter" },
               { href: "/leaderboard",   label: "Leaderboard"   },
               { href: "/character",     label: "My Character"  },
@@ -157,6 +160,21 @@ export default function Navbar() {
                 {label}
               </Link>
             ))}
+
+            {address && (
+              <button
+                onClick={markAllRead}
+                title={notifCount > 0 ? `${notifCount} new attempt${notifCount > 1 ? "s" : ""} on your chapters` : "No new notifications"}
+                className="relative text-amber-200/60 hover:text-amber-300 transition-colors px-2 py-1 rounded text-xs font-display tracking-wider"
+              >
+                Notifs
+                {notifCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {notifCount > 9 ? "9+" : notifCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {address ? (
               <WalletBadge />
@@ -211,18 +229,29 @@ export default function Navbar() {
           <p className="font-display text-xs tracking-[0.3em] text-amber-900/60 uppercase mb-4">Navigation</p>
 
           {[
-            { href: "/",               label: "World Map",      icon: "🗺️" },
-            { href: "/chapter/create", label: "Create Chapter", icon: "📜" },
-            { href: "/leaderboard",    label: "Leaderboard",    icon: "🏆" },
-            { href: "/character",      label: "My Character",   icon: "🧙" },
-          ].map(({ href, label, icon }) => (
+            { href: "/",               label: "World Map"      },
+            { href: "/marketplace",    label: "Marketplace"    },
+            { href: "/chapter/create", label: "Create Chapter" },
+            { href: "/leaderboard",    label: "Leaderboard"    },
+            { href: "/character",      label: "My Character"   },
+          ].map(({ href, label }) => (
             <Link key={href} href={href} onClick={close}
               className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"
               style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.04)" }}>
-              <span className="text-xl w-8 text-center">{icon}</span>
               {label}
             </Link>
           ))}
+
+          {address && notifCount > 0 && (
+            <button
+              onClick={() => { markAllRead(); close(); }}
+              className="w-full max-w-xs flex items-center justify-between px-6 py-3 rounded-xl font-display text-sm mt-2"
+              style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)", color: "#f87171" }}
+            >
+              <span>{notifCount} new attempt{notifCount > 1 ? "s" : ""} on your chapters</span>
+              <span className="text-xs opacity-60">Dismiss</span>
+            </button>
+          )}
 
           {!address ? (
             <button onClick={connect}
@@ -233,7 +262,7 @@ export default function Navbar() {
             <button onClick={switchNetwork} disabled={switching}
               className="w-full max-w-xs py-4 rounded-xl text-sm font-display tracking-wider mt-4 border border-red-800/60"
               style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}>
-              {switching ? "⏳ Switching…" : "⚠ Switch to Genlayer"}
+              {switching ? "Switching…" : "Switch to Genlayer"}
             </button>
           ) : (
             <div className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-green-900/50"

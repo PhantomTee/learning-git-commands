@@ -7,6 +7,8 @@ MAX_CHAPTER_ATTEMPTS = 200
 MAX_USER_ATTEMPTS    = 3
 MIN_PRICE            = u256(10 ** 18)        # 1 GEN in wei
 SCENARIO_GEN_FEE     = u256(10 * 10 ** 18)  # 10 GEN in wei
+MAX_CREATOR_NFTS     = u256(100)
+NFT_MINT_PRICE       = u256(5 * 10 ** 18)   # 5 GEN in wei
 
 # Used to send native GEN to any address (EOA or contract)
 @gl.evm.contract_interface
@@ -25,6 +27,9 @@ class Character:
     strength: u256
     intelligence: u256
     agility: u256
+    level: u256
+    xp: u256
+    wins: u256
 
 
 @allow_storage
@@ -69,12 +74,16 @@ class ChainTales(gl.Contract):
     prize_pools:            TreeMap[u256, u256]          # chapter_id → unclaimed GEN (wei)
     prize_claimed:          TreeMap[u256, bool]          # chapter_id → claimed?
     creator_balances:       TreeMap[Address, u256]       # creator → claimable GEN (wei)
-    _state:                 TreeMap[str, u256]           # "chapter_count", "protocol_balance"
+    _state:                 TreeMap[str, u256]           # "chapter_count", "protocol_balance", "nft_supply"
+    nft_owners:             TreeMap[u256, Address]       # tokenId (1–100) → current holder
+    nft_of:                 TreeMap[Address, u256]       # holder → tokenId (0 = none)
+    nft_listings:           TreeMap[u256, u256]          # tokenId → list price in wei (0 = not listed)
 
     def __init__(self) -> None:
         self.owner = gl.message.sender_address
         self._state["chapter_count"] = u256(0)
         self._state["protocol_balance"] = u256(0)
+        self._state["nft_supply"] = u256(0)
 
     def _only_owner(self) -> None:
         assert gl.message.sender_address == self.owner, "Only owner"
@@ -127,6 +136,20 @@ class ChainTales(gl.Contract):
                   .replace(">", "&gt;")
                   .replace('"', "&quot;")
                   .replace("'", "&apos;"))
+
+    def _nft_supply(self) -> u256:
+        return self._state["nft_supply"] if "nft_supply" in self._state else u256(0)
+
+    def _is_creator(self, addr: Address) -> bool:
+        if addr not in self.nft_of:
+            return False
+        return int(self.nft_of[addr]) > 0
+
+    def _transfer_nft_internal(self, token_id: u256, from_addr: Address, to_addr: Address) -> None:
+        self.nft_owners[token_id] = to_addr
+        self.nft_of[from_addr] = u256(0)
+        self.nft_of[to_addr] = token_id
+        self.nft_listings[token_id] = u256(0)
 
     def _class_stats(self, character_class: str) -> tuple:
         if character_class == "Warrior": return (14, 7, 9)
@@ -188,6 +211,9 @@ class ChainTales(gl.Contract):
             strength=u256(str_stat),
             intelligence=u256(int_stat),
             agility=u256(agi_stat),
+            level=u256(1),
+            xp=u256(0),
+            wins=u256(0),
         )
         return {
             "name": name,
@@ -197,6 +223,9 @@ class ChainTales(gl.Contract):
             "strength": str_stat,
             "intelligence": int_stat,
             "agility": agi_stat,
+            "level": 1,
+            "xp": 0,
+            "wins": 0,
         }
 
     @gl.public.view
@@ -209,6 +238,7 @@ class ChainTales(gl.Contract):
             "character_class": c.character_class, "backstory": c.backstory,
             "strength": int(c.strength), "intelligence": int(c.intelligence),
             "agility": int(c.agility),
+            "level": int(c.level), "xp": int(c.xp), "wins": int(c.wins),
         }
 
     @gl.public.view
@@ -226,6 +256,7 @@ class ChainTales(gl.Contract):
     ) -> u256:
         caller = gl.message.sender_address
         assert str(caller).lower() in self.characters, "Must have a character to create a chapter"
+        assert self._is_creator(caller), "Must hold a Creator NFT to create chapters"
         assert title == title.strip() and len(title) >= 1, "Title cannot be blank or padded"
         assert len(title) <= 80, "Title must be at most 80 chars"
         assert scenario == scenario.strip() and len(scenario) >= 1, "Scenario cannot be blank or padded"
@@ -390,16 +421,6 @@ Return ONLY valid JSON:
         else:
             judgment = f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} falls short."
 
-        akey = self._akey(chapter_id, attempt_idx)
-        self.chapter_attempts_flat[akey] = Attempt(
-            explorer=caller, action=action,
-            success=success, roll=u256(final_roll), judgment=judgment,
-        )
-        self.chapters[chapter_id].attempt_count = ch.attempt_count + u256(1)
-
-        ukey = self._ukey(chapter_id, caller)
-        self.user_attempts[ukey] = user_count + u256(1)
-
         if success:
             self.fomo_winners[chapter_id] = FomoWinner(
                 explorer=caller,
@@ -407,11 +428,61 @@ Return ONLY valid JSON:
                 attempt_index=u256(attempt_idx),
             )
 
+        akey = self._akey(chapter_id, attempt_idx)
+        self.chapter_attempts_flat[akey] = Attempt(
+            explorer=caller, action=action,
+            success=success, roll=u256(final_roll), judgment=judgment,
+        )
+        new_count = ch.attempt_count + u256(1)
+        self.chapters[chapter_id].attempt_count = new_count
+
+        ukey = self._ukey(chapter_id, caller)
+        self.user_attempts[ukey] = user_count + u256(1)
+
+        # Auto-close when chapter hits the attempt ceiling
+        if int(new_count) >= MAX_CHAPTER_ATTEMPTS:
+            self.chapters[chapter_id].active = False
+            if chapter_id not in self.fomo_winners:
+                pool = self._prize_pool(chapter_id)
+                if pool > u256(0):
+                    self._state["protocol_balance"] = self._protocol_balance() + pool
+                    self.prize_pools[chapter_id] = u256(0)
+
+        # Stat progression on success
+        leveled_up = False
+        if success:
+            character = self.characters[ckey]
+            new_wins = character.wins + u256(1)
+            new_xp   = character.xp + u256(10)
+            new_level = character.level
+            new_str   = character.strength
+            new_int   = character.intelligence
+            new_agi   = character.agility
+
+            if int(new_xp) >= 100:
+                leveled_up = True
+                new_level  = character.level + u256(1)
+                new_xp     = new_xp - u256(100)
+                if character.character_class == "Warrior":
+                    new_str = u256(min(20, int(character.strength) + 1))
+                elif character.character_class in ("Rogue", "Ranger"):
+                    new_agi = u256(min(20, int(character.agility) + 1))
+                else:
+                    new_int = u256(min(20, int(character.intelligence) + 1))
+
+            self.characters[ckey].wins         = new_wins
+            self.characters[ckey].xp           = new_xp
+            self.characters[ckey].level        = new_level
+            self.characters[ckey].strength     = new_str
+            self.characters[ckey].intelligence = new_int
+            self.characters[ckey].agility      = new_agi
+
         return {
-            "success":  success,
-            "roll":     final_roll,
-            "judgment": judgment,
-            "verdict":  verdict,
+            "success":    success,
+            "roll":       final_roll,
+            "judgment":   judgment,
+            "verdict":    verdict,
+            "leveled_up": leveled_up,
         }
 
     @gl.public.write
@@ -565,3 +636,174 @@ Return ONLY this exact JSON (no other text):
     @gl.public.view
     def get_user_attempts(self, chapter_id: u256, address: Address) -> u256:
         return self._user_attempt_count(chapter_id, address)
+
+    # ── Creator NFT ───────────────────────────────────────────────────────────
+
+    @gl.public.write.payable
+    def mint_creator_nft(self) -> u256:
+        caller = gl.message.sender_address
+        assert not self._is_creator(caller), "Already holds a Creator NFT"
+        assert int(self._nft_supply()) < int(MAX_CREATOR_NFTS), "All 100 Creator NFTs have been minted"
+        paid = gl.message.value
+        assert paid >= NFT_MINT_PRICE, "Must send at least 5 GEN to mint a Creator NFT"
+        self._state["protocol_balance"] = self._protocol_balance() + paid
+        new_supply = self._nft_supply() + u256(1)
+        self._state["nft_supply"] = new_supply
+        token_id = new_supply
+        self.nft_owners[token_id] = caller
+        self.nft_of[caller] = token_id
+        return token_id
+
+    @gl.public.write
+    def admin_mint_nft(self, to: Address) -> u256:
+        """Owner mints an NFT for free to a specific address (for bootstrapping)."""
+        self._only_owner()
+        assert not self._is_creator(to), "Address already holds a Creator NFT"
+        assert int(self._nft_supply()) < int(MAX_CREATOR_NFTS), "All 100 Creator NFTs have been minted"
+        new_supply = self._nft_supply() + u256(1)
+        self._state["nft_supply"] = new_supply
+        token_id = new_supply
+        self.nft_owners[token_id] = to
+        self.nft_of[to] = token_id
+        return token_id
+
+    @gl.public.write
+    def list_nft(self, token_id: u256, price: u256) -> None:
+        assert token_id in self.nft_owners, "Token does not exist"
+        assert self.nft_owners[token_id] == gl.message.sender_address, "Not the token owner"
+        assert price >= u256(10 ** 18), "Minimum listing price is 1 GEN"
+        self.nft_listings[token_id] = price
+
+    @gl.public.write
+    def delist_nft(self, token_id: u256) -> None:
+        assert token_id in self.nft_owners, "Token does not exist"
+        assert self.nft_owners[token_id] == gl.message.sender_address, "Not the token owner"
+        self.nft_listings[token_id] = u256(0)
+
+    @gl.public.write.payable
+    def buy_nft(self, token_id: u256) -> None:
+        assert token_id in self.nft_owners, "Token does not exist"
+        listed_price = self.nft_listings[token_id] if token_id in self.nft_listings else u256(0)
+        assert int(listed_price) > 0, "Token is not listed for sale"
+        buyer = gl.message.sender_address
+        seller = self.nft_owners[token_id]
+        assert buyer != seller, "Cannot buy your own token"
+        assert not self._is_creator(buyer), "Already holds a Creator NFT"
+        paid = gl.message.value
+        assert paid >= listed_price, "Insufficient payment"
+        self._transfer_nft_internal(token_id, seller, buyer)
+        _Addr(seller).emit_transfer(value=listed_price)
+        if paid > listed_price:
+            _Addr(buyer).emit_transfer(value=paid - listed_price)
+
+    @gl.public.write
+    def transfer_nft(self, token_id: u256, to: Address) -> None:
+        caller = gl.message.sender_address
+        assert token_id in self.nft_owners, "Token does not exist"
+        assert self.nft_owners[token_id] == caller, "Not the token owner"
+        assert to != caller, "Cannot transfer to yourself"
+        assert to != self._zero_address(), "Cannot transfer to zero address"
+        assert not self._is_creator(to), "Recipient already holds a Creator NFT"
+        self._transfer_nft_internal(token_id, caller, to)
+
+    @gl.public.view
+    def get_all_nfts(self) -> list:
+        supply = int(self._nft_supply())
+        result = []
+        for i in range(1, supply + 1):
+            tid = u256(i)
+            if tid in self.nft_owners:
+                owner = self.nft_owners[tid]
+                price = int(self.nft_listings[tid]) if tid in self.nft_listings else 0
+                result.append({
+                    "token_id": i,
+                    "owner": str(owner),
+                    "price": price,
+                })
+        return result
+
+    @gl.public.view
+    def get_creator_nft(self, address: Address) -> int:
+        if address not in self.nft_of:
+            return 0
+        return int(self.nft_of[address])
+
+    @gl.public.view
+    def get_nft_supply(self) -> int:
+        return int(self._nft_supply())
+
+    @gl.public.view
+    def get_nft_svg(self, token_id: u256) -> str:
+        assert token_id in self.nft_owners, "Token does not exist"
+        tid = int(token_id)
+
+        if tid <= 33:
+            c    = "#f59e0b"
+            tier = "FOUNDER"
+        elif tid <= 66:
+            c    = "#8b5cf6"
+            tier = "KEEPER"
+        else:
+            c    = "#ef4444"
+            tier = "SEEKER"
+
+        num    = "#" + str(tid).zfill(3)
+        serial = "CT-" + str(tid).zfill(3) + "-GEN"
+
+        s  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 560">'
+        s += '<defs>'
+        s += '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">'
+        s += '<stop offset="0%" stop-color="#0e0812"/>'
+        s += '<stop offset="100%" stop-color="#1a0f22"/>'
+        s += '</linearGradient>'
+        s += '<linearGradient id="ac" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">'
+        s += '<stop offset="0%" stop-color="' + c + '" stop-opacity="0"/>'
+        s += '<stop offset="50%" stop-color="' + c + '" stop-opacity="0.7"/>'
+        s += '<stop offset="100%" stop-color="' + c + '" stop-opacity="0"/>'
+        s += '</linearGradient>'
+        s += '</defs>'
+        # Background card
+        s += '<rect width="400" height="560" rx="18" fill="url(#bg)"/>'
+        # Borders
+        s += '<rect x="4" y="4" width="392" height="552" rx="15" fill="none" stroke="' + c + '" stroke-width="1.5" stroke-opacity="0.55"/>'
+        s += '<rect x="12" y="12" width="376" height="536" rx="11" fill="none" stroke="' + c + '" stroke-width="0.5" stroke-opacity="0.2"/>'
+        # Corner diamond ornaments
+        s += '<polygon points="24,24 32,32 24,40 16,32" fill="' + c + '" opacity="0.45"/>'
+        s += '<polygon points="376,24 384,32 376,40 368,32" fill="' + c + '" opacity="0.45"/>'
+        s += '<polygon points="24,520 32,528 24,536 16,528" fill="' + c + '" opacity="0.45"/>'
+        s += '<polygon points="376,520 384,528 376,536 368,528" fill="' + c + '" opacity="0.45"/>'
+        # Header
+        s += '<text x="200" y="54" text-anchor="middle" font-family="Georgia,serif" font-size="13" fill="' + c + '" letter-spacing="6" font-weight="bold">CHAINTALES</text>'
+        s += '<line x1="30" y1="60" x2="150" y2="60" stroke="' + c + '" stroke-opacity="0.35" stroke-width="0.8"/>'
+        s += '<line x1="250" y1="60" x2="370" y2="60" stroke="' + c + '" stroke-opacity="0.35" stroke-width="0.8"/>'
+        # Shield silhouette
+        s += '<path d="M152,100 L248,100 L258,185 Q252,228 200,252 Q148,228 142,185 Z" fill="' + c + '" fill-opacity="0.06" stroke="' + c + '" stroke-width="1.2" stroke-opacity="0.28"/>'
+        # Sword: blade (triangle pointing up), fuller, guard, grip, pommel
+        s += '<polygon points="200,90 205,200 195,200" fill="' + c + '" opacity="0.75"/>'
+        s += '<line x1="200" y1="95" x2="200" y2="195" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.18"/>'
+        s += '<rect x="181" y="196" width="38" height="8" rx="4" fill="' + c + '" opacity="0.82"/>'
+        s += '<rect x="196" y="204" width="8" height="26" rx="3" fill="' + c + '" opacity="0.55"/>'
+        s += '<circle cx="200" cy="234" r="7" fill="' + c + '" opacity="0.55"/>'
+        # Subtle glow behind blade
+        s += '<ellipse cx="200" cy="155" rx="20" ry="38" fill="' + c + '" fill-opacity="0.05"/>'
+        # Token number
+        s += '<text x="200" y="318" text-anchor="middle" font-family="Georgia,serif" font-size="78" fill="' + c + '" font-weight="bold" opacity="0.88">' + num + '</text>'
+        # Accent divider line
+        s += '<rect fill="url(#ac)" x="30" y="328" width="340" height="1"/>'
+        # CREATOR badge
+        s += '<rect x="138" y="342" width="124" height="26" rx="13" fill="' + c + '" fill-opacity="0.1" stroke="' + c + '" stroke-opacity="0.35" stroke-width="0.8"/>'
+        s += '<text x="200" y="360" text-anchor="middle" font-family="Georgia,serif" font-size="10" fill="' + c + '" letter-spacing="5" font-weight="bold">CREATOR</text>'
+        # Tier badge
+        s += '<rect x="150" y="372" width="100" height="20" rx="10" fill="' + c + '" fill-opacity="0.06" stroke="' + c + '" stroke-opacity="0.2" stroke-width="0.6"/>'
+        s += '<text x="200" y="386" text-anchor="middle" font-family="Georgia,serif" font-size="9" fill="' + c + '" letter-spacing="3" opacity="0.75">' + tier + '</text>'
+        # Tagline
+        s += '<text x="200" y="430" text-anchor="middle" font-family="Georgia,serif" font-size="12" fill="white" opacity="0.3" font-style="italic">Write the Legend</text>'
+        # Footer divider
+        s += '<line x1="30" y1="468" x2="150" y2="468" stroke="' + c + '" stroke-opacity="0.25" stroke-width="0.7"/>'
+        s += '<line x1="250" y1="468" x2="370" y2="468" stroke="' + c + '" stroke-opacity="0.25" stroke-width="0.7"/>'
+        # Footer text
+        s += '<text x="200" y="489" text-anchor="middle" font-family="monospace" font-size="9" fill="white" opacity="0.22" letter-spacing="2">GENESIS COLLECTION</text>'
+        s += '<text x="200" y="508" text-anchor="middle" font-family="monospace" font-size="9" fill="white" opacity="0.14" letter-spacing="1">GENLAYER STUDIONET</text>'
+        s += '<text x="200" y="536" text-anchor="middle" font-family="monospace" font-size="10" fill="' + c + '" opacity="0.3" letter-spacing="1">' + serial + '</text>'
+        s += '</svg>'
+        return s

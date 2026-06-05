@@ -1,6 +1,6 @@
 "use client";
 
-import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer";
+import { Chapter, hasWinner, formatGEN } from "@/lib/genlayer-server";
 import Link from "next/link";
 
 interface Props {
@@ -29,7 +29,6 @@ export default function WorldMap({ chapters }: Props) {
   if (chapters.length === 0) {
     return (
       <div className="map-bg rounded-xl border border-amber-900/30 p-12 text-center">
-        <div className="text-6xl mb-4">🗺️</div>
         <p className="font-display text-amber-400 tracking-widest text-sm uppercase mb-2">
           No chapters discovered yet
         </p>
@@ -48,7 +47,6 @@ export default function WorldMap({ chapters }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🗺️</span>
             <div>
               <h3 className="font-display text-amber-400 font-bold tracking-widest text-sm uppercase">
                 Realm of ChainTales
@@ -85,7 +83,6 @@ export default function WorldMap({ chapters }: Props) {
                       style={{ boxShadow: "0 0 6px rgba(245,158,11,0.8)" }} />
 
                     <div className="flex items-start gap-3 mb-2">
-                      <span className="text-2xl shrink-0">🏰</span>
                       <div className="min-w-0">
                         <h4 className="font-display font-bold text-amber-300 text-sm leading-snug group-hover:text-amber-100 transition-colors line-clamp-1">
                           {ch.title}
@@ -103,15 +100,15 @@ export default function WorldMap({ chapters }: Props) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs px-2 py-0.5 rounded-full font-display"
                         style={{ color: dc.color, border: `1px solid ${dc.border}`, background: `${dc.border.replace("0.4","0.08")}` }}>
-                        ⚔ D{ch.difficulty} · {difficultyLabel(ch.difficulty)}
+                        D{ch.difficulty} · {difficultyLabel(ch.difficulty)}
                       </span>
-                      <span className="text-xs text-amber-300/70">🎲 {ch.attempt_count}</span>
+                      <span className="text-xs text-amber-300/70">{ch.attempt_count} attempts</span>
                       {ch.prize_pool > 0 && (
-                        <span className="text-xs text-amber-300 font-bold">🏆 {formatGEN(ch.prize_pool)}</span>
+                        <span className="text-xs text-amber-300 font-bold">{formatGEN(ch.prize_pool)}</span>
                       )}
-                      <span className="text-xs text-amber-400/60">💰 {formatGEN(ch.price_per_attempt)}</span>
+                      <span className="text-xs text-amber-400/60">{formatGEN(ch.price_per_attempt)}</span>
                       {fw && (
-                        <span className="text-xs text-amber-300">⚡ {fw.explorer.slice(0, 6)}…</span>
+                        <span className="text-xs text-amber-300">Leader: {fw.explorer.slice(0, 6)}…</span>
                       )}
                     </div>
                   </div>
@@ -132,7 +129,6 @@ export default function WorldMap({ chapters }: Props) {
                 <Link key={ch.id} href={`/chapter/${ch.id}`}>
                   <div className="panel p-3 opacity-60 hover:opacity-90 transition-opacity cursor-pointer">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">🏚️</span>
                       <span className="font-display text-xs text-amber-200/80 line-clamp-1">{ch.title}</span>
                     </div>
                   </div>

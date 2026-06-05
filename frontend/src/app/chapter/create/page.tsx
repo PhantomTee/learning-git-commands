@@ -171,7 +171,7 @@ export default function CreateChapterPage() {
           className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-900/50 text-amber-400 hover:border-amber-500/70 hover:text-amber-300 transition-colors text-xs font-display tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: "rgba(245,158,11,0.04)" }}
         >
-          {generating ? "⏳ Consulting oracle…" : "✨ Generate for me · 10 GEN (AI draft)"}
+          {generating ? "Consulting oracle…" : "Generate for me · 10 GEN (AI draft)"}
         </button>
       </div>
 
@@ -189,7 +189,6 @@ export default function CreateChapterPage() {
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-display tracking-wider"
           style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.3)", color: "#d97706" }}
         >
-          <span className="animate-pulse">⏳</span>
           <span className="flex-1">Transaction submitted — validators are computing your scenario</span>
           <span className="shrink-0 underline">View ↗</span>
         </a>
@@ -328,15 +327,15 @@ export default function CreateChapterPage() {
           <div className="p-3 rounded-lg text-xs space-y-1"
             style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
             <div className="flex justify-between text-amber-200/60">
-              <span>🏆 Prize pool (per attempt)</span>
+              <span>Prize pool (per attempt)</span>
               <span className="text-amber-400">{(form.price_gen * 0.6).toFixed(2)} GEN</span>
             </div>
             <div className="flex justify-between text-amber-200/60">
-              <span>💰 Your earnings (per attempt)</span>
+              <span>Your earnings (per attempt)</span>
               <span className="text-amber-400">{(form.price_gen * 0.3).toFixed(2)} GEN</span>
             </div>
             <div className="flex justify-between text-amber-200/60">
-              <span>⚙ Protocol (per attempt)</span>
+              <span>Protocol (per attempt)</span>
               <span className="text-amber-400">{(form.price_gen * 0.1).toFixed(2)} GEN</span>
             </div>
           </div>
@@ -353,7 +352,7 @@ export default function CreateChapterPage() {
           disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition}
           className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors"
         >
-          {status === "pending" ? "⏳ Writing to Genlayer…" : "Publish Chapter"}
+          {status === "pending" ? "Writing to Genlayer…" : "Publish Chapter"}
         </button>
       </form>
     </div>

@@ -52,7 +52,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
     <div className="space-y-4">
       {/* Win condition */}
       <div className="p-3 rounded-lg text-sm" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
-        <span className="font-display text-xs text-amber-500 tracking-widest uppercase">🎯 Victory Condition — </span>
+        <span className="font-display text-xs text-amber-500 tracking-widest uppercase">Victory Condition — </span>
         <span className="text-amber-200/70 text-xs">{winCondition}</span>
       </div>
 
@@ -75,7 +75,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
           disabled={!action.trim() || disabled || status === "pending"}
           className="btn-gold w-full py-3 rounded-lg text-sm font-display tracking-wider"
         >
-          {status === "pending" ? "⏳ The dungeon master deliberates…" : `⚔ Submit Action${priceGEN ? ` · ${priceGEN}` : ""}`}
+          {status === "pending" ? "The dungeon master deliberates…" : `Submit Action${priceGEN ? ` · ${priceGEN}` : ""}`}
         </button>
       </form>
 
@@ -94,7 +94,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
           <div className={`h-1 ${result.success ? "bg-green-500" : "bg-red-600"}`} />
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">{result.success ? "✅" : "💀"}</span>
+              <span className="text-xl font-display font-black" style={{ color: result.success ? "#4ade80" : "#f87171" }}>{result.success ? "✓" : "✕"}</span>
               <div>
                 <div className="font-display font-bold text-sm" style={{ color: result.success ? "#4ade80" : "#f87171" }}>
                   {result.success ? "Victory!" : "Defeated"}
@@ -113,7 +113,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
       {error && (
         <div className="p-3 rounded-lg text-sm text-red-400 font-display"
           style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.3)" }}>
-          ⚠ {error}
+          {error}
         </div>
       )}
     </div>

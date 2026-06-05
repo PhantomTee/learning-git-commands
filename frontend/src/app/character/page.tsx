@@ -5,6 +5,8 @@ import {
   getCharacter,
   getCreatorBalance,
   getClaimablePrizes,
+  getChapters,
+  getCreatorNft,
   createCharacter,
   claimPrize,
   withdrawCreator,
@@ -15,6 +17,7 @@ import {
   normaliseError,
   Character,
   ClaimablePrize,
+  Chapter,
 } from "@/lib/genlayer";
 import CharacterSheet from "@/components/CharacterSheet";
 import { useToast } from "@/components/Toast";
@@ -25,6 +28,8 @@ export default function CharacterPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [creatorBalance, setCreatorBalance] = useState<number>(0);
   const [claimablePrizes, setClaimablePrizes] = useState<ClaimablePrize[]>([]);
+  const [createdChapters, setCreatedChapters] = useState<Chapter[]>([]);
+  const [creatorNftId, setCreatorNftId]       = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<"idle" | "pending">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -56,12 +61,16 @@ export default function CharacterPage() {
 
     // Secondary data — failures here are non-critical
     try {
-      const [creatorBal, prizes] = await Promise.all([
+      const [creatorBal, prizes, allChapters, nftId] = await Promise.all([
         getCreatorBalance(addr),
         getClaimablePrizes(addr),
+        getChapters(0, 100),
+        getCreatorNft(addr),
       ]);
       setCreatorBalance(Number(creatorBal));
       setClaimablePrizes(prizes);
+      setCreatedChapters(allChapters.filter((c) => c.creator.toLowerCase() === addr.toLowerCase()));
+      setCreatorNftId(nftId);
     } catch { /* ignore */ }
   }
 
@@ -158,7 +167,7 @@ export default function CharacterPage() {
   if (!address) {
     return (
       <div className="max-w-md mx-auto px-6 py-20 text-center space-y-4">
-        <p className="text-5xl">🧙</p>
+        <p className="font-display text-amber-900/40 tracking-widest text-sm uppercase">Character</p>
         <p className="text-gray-400">Connect your wallet to see your character.</p>
         <button
           onClick={connect}
@@ -178,11 +187,67 @@ export default function CharacterPage() {
         <>
           <CharacterSheet character={character} />
 
+          {/* ── Creator NFT badge ── */}
+          {creatorNftId > 0 && (
+            <div className="panel p-4 flex items-center justify-between gap-3"
+              style={{ border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.04)" }}>
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="font-display font-bold text-amber-400 text-sm">Creator NFT #{creatorNftId}</p>
+                  <p className="text-xs text-amber-900/60">You hold a Creator seat · Can write chapters</p>
+                </div>
+              </div>
+              <Link href="/marketplace"
+                className="text-xs font-display tracking-widest text-amber-900/60 hover:text-amber-400 transition-colors">
+                Marketplace →
+              </Link>
+            </div>
+          )}
+
+          {/* ── Role identity ── */}
+          {(createdChapters.length > 0 || (character.wins ?? 0) > 0 || claimablePrizes.length > 0) && (
+            <div className="panel p-5 space-y-3">
+              <p className="font-display text-xs tracking-widest uppercase text-amber-900/60">Identity</p>
+              <div className="flex flex-wrap gap-3">
+                {createdChapters.length > 0 && (
+                  <div className="flex-1 min-w-[140px] space-y-1 rounded-lg p-3"
+                    style={{ border: "1px solid rgba(245,158,11,0.2)", background: "rgba(245,158,11,0.04)" }}>
+                    <span className="font-display text-xs tracking-widest uppercase px-2 py-0.5 rounded text-amber-400"
+                      style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)" }}>
+                      Creator
+                    </span>
+                    <p className="text-xs text-amber-200/50 pt-1">
+                      {createdChapters.length} {createdChapters.length === 1 ? "chapter" : "chapters"} written
+                    </p>
+                    <p className="text-xs text-amber-200/50">
+                      {createdChapters.reduce((s, c) => s + c.attempt_count, 0)} total attempts received
+                    </p>
+                  </div>
+                )}
+                {((character.wins ?? 0) > 0 || claimablePrizes.length > 0) && (
+                  <div className="flex-1 min-w-[140px] space-y-1 rounded-lg p-3"
+                    style={{ border: "1px solid rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.04)" }}>
+                    <span className="font-display text-xs tracking-widest uppercase px-2 py-0.5 rounded text-purple-400"
+                      style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)" }}>
+                      Explorer
+                    </span>
+                    <p className="text-xs text-amber-200/50 pt-1">
+                      {character.wins ?? 0} {(character.wins ?? 0) === 1 ? "victory" : "victories"}
+                    </p>
+                    <p className="text-xs text-amber-200/50">
+                      Level {character.level ?? 1} · {character.xp ?? 0}/100 XP
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── Claimable prizes notification ── */}
           {claimablePrizes.length > 0 && (
             <div className="space-y-2">
               <p className="font-display text-xs text-amber-400 tracking-widest uppercase flex items-center gap-2">
-                <span className="animate-pulse">🏆</span> You have prizes to claim!
+                You have prizes to claim!
               </p>
               {claimablePrizes.map((prize) => (
                 <div key={prize.chapter_id} className="panel p-4 flex items-center justify-between gap-3"
@@ -199,7 +264,7 @@ export default function CharacterPage() {
                     disabled={status === "pending"}
                     className="btn-gold px-4 py-2 rounded-lg text-xs shrink-0"
                   >
-                    {status === "pending" ? "⏳" : "Claim"}
+                    {status === "pending" ? "…" : "Claim"}
                   </button>
                 </div>
               ))}
@@ -221,14 +286,14 @@ export default function CharacterPage() {
                 disabled={status === "pending"}
                 className="btn-stone px-4 py-2 rounded-lg text-xs shrink-0"
               >
-                {status === "pending" ? "⏳" : "Withdraw"}
+                {status === "pending" ? "…" : "Withdraw"}
               </button>
             </div>
           )}
 
           {error && (
             <div className="text-sm text-red-400 border border-red-500/30 bg-red-950/20 rounded-lg p-3 font-display">
-              ⚠ {error}
+              {error}
             </div>
           )}
         </>
@@ -296,7 +361,7 @@ export default function CharacterPage() {
               disabled={status === "pending" || !form.name}
               className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-2.5 rounded-lg transition-colors"
             >
-              {status === "pending" ? "⏳ Generating character on-chain…" : "Create Character"}
+              {status === "pending" ? "Generating character on-chain…" : "Create Character"}
             </button>
           </form>
         </div>

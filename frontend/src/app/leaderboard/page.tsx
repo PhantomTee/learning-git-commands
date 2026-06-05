@@ -1,4 +1,4 @@
-import { getLeaderboard, getChapters, LeaderboardEntry, Chapter, formatGEN } from "@/lib/genlayer";
+import { getLeaderboard, getChapters, LeaderboardEntry, Chapter, formatGEN } from "@/lib/genlayer-server";
 import Link from "next/link";
 
 export const revalidate = 30;
@@ -36,7 +36,7 @@ export default async function LeaderboardPage() {
 
       {ranked.length === 0 ? (
         <div className="panel text-center py-16 space-y-4">
-          <p className="text-5xl">🏆</p>
+          <p className="font-display text-sm text-amber-900/40 tracking-widest uppercase">—</p>
           <p className="font-display text-amber-400/50 tracking-widest text-sm uppercase">
             No legends yet
           </p>
@@ -48,7 +48,7 @@ export default async function LeaderboardPage() {
         <div className="space-y-3">
           {ranked.map((entry, i) => {
             const chapter = chapterMap[entry.chapter_id];
-            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+            const medal = i === 0 ? "1st" : i === 1 ? "2nd" : i === 2 ? "3rd" : `#${i + 1}`;
             const hasPrize = entry.prize_pool > 0;
 
             return (
@@ -58,7 +58,7 @@ export default async function LeaderboardPage() {
 
                   {/* Rank */}
                   <div className="w-10 text-center shrink-0">
-                    <span className="text-2xl">{medal}</span>
+                    <span className="font-display font-bold text-sm text-amber-400">{medal}</span>
                   </div>
 
                   {/* Chapter info */}
@@ -91,8 +91,8 @@ export default async function LeaderboardPage() {
                         </div>
                         <div className="text-xs font-display">
                           {entry.prize_claimed
-                            ? <span className="text-green-500/70">Claimed ✓</span>
-                            : <span className="text-amber-500 animate-pulse">Unclaimed ⚡</span>}
+                            ? <span className="text-green-500/70">Claimed</span>
+                            : <span className="text-amber-500 animate-pulse">Unclaimed</span>}
                         </div>
                       </>
                     ) : (
