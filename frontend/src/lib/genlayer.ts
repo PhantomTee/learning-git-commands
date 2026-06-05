@@ -32,7 +32,7 @@ export function normaliseError(err: any): Error {
 }
 
 export const CONTRACT_ADDRESS =
-  (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x";
+  (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ?? "0x18ABc0e9Efb392D6d7A0707e5d744684b191C64f";
 
 // ── GEN token formatting ─────────────────────────────────────────────────────
 
