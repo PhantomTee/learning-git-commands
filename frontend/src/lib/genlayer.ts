@@ -31,7 +31,7 @@ export function normaliseError(err: any): Error {
   return err instanceof Error ? err : new Error(msg);
 }
 
-export const CONTRACT_ADDRESS = "0x18ABc0e9Efb392D6d7A0707e5d744684b191C64f" as `0x${string}`;
+export const CONTRACT_ADDRESS = "0xc03A027E277a7874174b9c41a63137F3958EFd86" as `0x${string}`;
 
 // ── GEN token formatting ─────────────────────────────────────────────────────
 

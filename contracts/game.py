@@ -61,7 +61,7 @@ class FomoWinner:
 
 class ChainTales(gl.Contract):
     owner:                  Address
-    characters:             TreeMap[Address, Character]
+    characters:             TreeMap[str, Character]      # key: lowercase hex address
     chapters:               TreeMap[u256, Chapter]
     chapter_attempts_flat:  TreeMap[str, Attempt]       # "chapter_id:local_idx"
     fomo_winners:           TreeMap[u256, FomoWinner]
@@ -167,7 +167,8 @@ class ChainTales(gl.Contract):
     @gl.public.write
     def create_character(self, name: str, gender: str, age: u256) -> dict:
         caller = gl.message.sender_address
-        assert caller not in self.characters, "Character already exists"
+        ckey = str(caller).lower()
+        assert ckey not in self.characters, "Character already exists"
         assert name == name.strip() and len(name) >= 1, "Name cannot be blank or padded"
         assert len(name) <= 32, "Name must be at most 32 chars"
         assert gender in ("male", "female", "other"), "gender must be male/female/other"
@@ -180,7 +181,7 @@ class ChainTales(gl.Contract):
         str_stat, int_stat, agi_stat = self._class_stats(character_class)
         backstory = f"{name} is a {character_class} drawn into ChainTales by fate."
 
-        self.characters[caller] = Character(
+        self.characters[ckey] = Character(
             name=name, age=age,
             character_class=character_class,
             backstory=backstory,
@@ -200,8 +201,9 @@ class ChainTales(gl.Contract):
 
     @gl.public.view
     def get_character(self, address: Address) -> dict:
-        assert address in self.characters, "Character does not exist"
-        c = self.characters[address]
+        ckey = str(address).lower()
+        assert ckey in self.characters, "Character does not exist"
+        c = self.characters[ckey]
         return {
             "name": c.name, "age": int(c.age),
             "character_class": c.character_class, "backstory": c.backstory,
@@ -211,7 +213,7 @@ class ChainTales(gl.Contract):
 
     @gl.public.view
     def has_character(self, address: Address) -> bool:
-        return address in self.characters
+        return str(address).lower() in self.characters
 
     @gl.public.write
     def create_chapter(
@@ -223,7 +225,7 @@ class ChainTales(gl.Contract):
         price_per_attempt: u256,
     ) -> u256:
         caller = gl.message.sender_address
-        assert caller in self.characters, "Must have a character to create a chapter"
+        assert str(caller).lower() in self.characters, "Must have a character to create a chapter"
         assert title == title.strip() and len(title) >= 1, "Title cannot be blank or padded"
         assert len(title) <= 80, "Title must be at most 80 chars"
         assert scenario == scenario.strip() and len(scenario) >= 1, "Scenario cannot be blank or padded"
@@ -302,7 +304,8 @@ class ChainTales(gl.Contract):
     @gl.public.write.payable
     def submit_action(self, chapter_id: u256, action: str) -> dict:
         caller = gl.message.sender_address
-        assert caller in self.characters, "Must have a character"
+        ckey = str(caller).lower()
+        assert ckey in self.characters, "Must have a character"
 
         assert chapter_id in self.chapters, "Chapter does not exist"
         ch = self.chapters[chapter_id]
@@ -328,7 +331,7 @@ class ChainTales(gl.Contract):
         self.creator_balances[ch.creator] = self._creator_balance(ch.creator) + creator_cut
         self._state["protocol_balance"] = self._protocol_balance() + protocol_cut
 
-        character  = self.characters[caller]
+        character  = self.characters[ckey]
         attempt_idx = int(ch.attempt_count)
         roll       = self._derive_roll(chapter_id, attempt_idx, int(character.agility))
         difficulty = int(ch.difficulty)
