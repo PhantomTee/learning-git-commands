@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   getChapter, getAttempts, submitAction, closeChapter, waitForResult,
-  createWriteClient, hasWinner, formatGEN, explorerTxUrl, normaliseError,
+  createWriteClient, hasWinner, hasCharacter, formatGEN, explorerTxUrl, normaliseError,
   Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
@@ -21,6 +21,7 @@ export default function ChapterPage() {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [hasChar, setHasChar] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
@@ -41,7 +42,15 @@ export default function ChapterPage() {
     load();
 
     const eth = (window as any).ethereum;
-    if (eth) eth.request({ method: "eth_accounts" }).then((a: string[]) => { if (a[0]) setWalletAddress(a[0]); });
+    if (eth) {
+      eth.request({ method: "eth_accounts" }).then(async (a: string[]) => {
+            if (a[0]) {
+                      setWalletAddress(a[0]);
+                            const exists = await hasCharacter(a[0]).catch(() => false);
+                                  setHasChar(exists);
+            }
+      });
+    }
   }, [chapterId]);
 
   async function handleAction(action: string): Promise<{ attempt: Attempt | null; txHash: string }> {
@@ -51,6 +60,14 @@ export default function ChapterPage() {
 
     const accounts = await eth.request({ method: "eth_requestAccounts" });
     setWalletAddress(accounts[0]);
+
+    const exists = await hasCharacter(accounts[0]).catch(() => false);
+    setHasChar(exists);
+
+    if (!exists) {
+      throw new Error("Create a character before submitting an action.");
+    }
+
     const writeClient = createWriteClient(accounts[0] as `0x${string}`);
     await writeClient.connect("studionet").catch(() => {});
 
