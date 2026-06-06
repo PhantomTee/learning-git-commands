@@ -81,9 +81,23 @@ export default function Navbar() {
       setWrong(chainId.toLowerCase() !== STUDIONET_CHAIN_ID);
     }
 
+    function onAccountsChanged(accs: string[]) {
+      if (!accs[0]) {
+        setAddress(null);
+        setCreatorNftId(0);
+        return;
+      }
+      setAddress(accs[0]);
+      loadCreatorNft(accs[0]);
+    }
+
     eth.request({ method: "eth_chainId" }).then(onChainChanged);
     eth.on?.("chainChanged", onChainChanged);
-    return () => eth.removeListener?.("chainChanged", onChainChanged);
+    eth.on?.("accountsChanged", onAccountsChanged);
+    return () => {
+      eth.removeListener?.("chainChanged", onChainChanged);
+      eth.removeListener?.("accountsChanged", onAccountsChanged);
+    };
   }, [loadCreatorNft]);
 
   // ── Lock scroll when mobile menu is open ─────────────────────────────────
@@ -112,6 +126,14 @@ export default function Navbar() {
     setMenuOpen(false);
   }
 
+  function disconnect() {
+    setAddress(null);
+    setCreatorNftId(0);
+    setWrong(false);
+    setMenuOpen(false);
+    info("Wallet disconnected", "ChainTales will ask before using this wallet again.");
+  }
+
   function close() { setMenuOpen(false); }
 
   // ── Wallet display ─────────────────────────────────────────────────────────
@@ -130,13 +152,18 @@ export default function Navbar() {
       );
     }
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50"
-        style={{ background: "rgba(0,0,0,0.4)" }}>
-        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        <span className="font-mono text-xs text-green-400">
+      <button
+        type="button"
+        onClick={disconnect}
+        title="Disconnect wallet"
+        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50 hover:border-amber-500/60 transition-colors"
+        style={{ background: "rgba(245,158,11,0.05)" }}
+      >
+        <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
+        <span className="font-mono text-xs text-amber-200 group-hover:text-amber-100 transition-colors">
           {address.slice(0, 6)}…{address.slice(-4)}
         </span>
-      </div>
+      </button>
     );
   };
 
@@ -278,11 +305,14 @@ export default function Navbar() {
               {switching ? "Switching…" : "Switch to Genlayer"}
             </button>
           ) : (
-            <div className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-green-900/50"
-              style={{ background: "rgba(0,0,0,0.4)" }}>
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="font-mono text-xs text-green-400">{address.slice(0, 8)}…{address.slice(-6)}</span>
-            </div>
+            <button
+              onClick={disconnect}
+              className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-amber-900/50 hover:border-amber-500/60 transition-colors"
+              style={{ background: "rgba(245,158,11,0.05)" }}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="font-mono text-xs text-amber-200">{address.slice(0, 8)}…{address.slice(-6)}</span>
+            </button>
           )}
         </div>
 
