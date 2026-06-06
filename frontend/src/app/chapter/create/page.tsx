@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createWriteClient, createChapter, generateScenario, waitForResult, readLeaderResult, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
 import { revalidateHome } from "@/app/actions";
 import { useToast } from "@/components/Toast";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 const HISTORY_KEY = "scenario_history";
 const MAX_HISTORY = 10;
@@ -56,6 +58,7 @@ export default function CreateChapterPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const recordActivity = useMutation(api.world.recordActivity);
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -139,6 +142,14 @@ export default function CreateChapterPage() {
         setStatus("idle");
         return;
       }
+      await recordActivity({
+        type: "chapter_created",
+        actor: accounts[0],
+        chapter_id: chapterId,
+        chapter_title: form.title,
+        tx_hash: txHash,
+        message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} published ${form.title}.`,
+      }).catch(() => {});
       await revalidateHome();
       dismiss(tid);
       success("Chapter published!", "Explorers can now attempt your dungeon.", { href: explorerTxUrl(txHash), label: "View transaction" });

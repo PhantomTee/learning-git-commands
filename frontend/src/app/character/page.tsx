@@ -22,6 +22,8 @@ import {
 import CharacterSheet from "@/components/CharacterSheet";
 import { useToast } from "@/components/Toast";
 import Link from "next/link";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 export default function CharacterPage() {
   const [address, setAddress] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export default function CharacterPage() {
 
   const [form, setForm] = useState({ name: "", gender: "male", age: 25 });
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const recordActivity = useMutation(api.world.recordActivity);
 
   useEffect(() => {
     async function init() {
@@ -127,6 +130,16 @@ export default function CharacterPage() {
       const txHash = await claimPrize(writeClient, chapterId);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
+      const prize = claimablePrizes.find((item) => item.chapter_id === chapterId);
+      await recordActivity({
+        type: "prize_claimed",
+        actor: accounts[0],
+        chapter_id: chapterId,
+        chapter_title: prize?.title,
+        amount_wei: prize ? String(prize.prize_pool) : undefined,
+        tx_hash: txHash,
+        message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} claimed the prize${prize?.title ? ` for ${prize.title}` : ""}.`,
+      }).catch(() => {});
       dismiss(tid);
       success("Prize claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
       await loadData(accounts[0]);

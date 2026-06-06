@@ -1,76 +1,63 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { getChapters } from "@/lib/genlayer-server";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 const STORAGE_KEY = "ct_notif_seen";
-const POLL_MS = 30_000;
 
 export interface NotifItem {
-  chapterId: number;
+  id: string;
+  chapterId?: number;
   title: string;
-  newAttempts: number;
+  message: string;
 }
 
-function getSeenMap(): Record<number, number> {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}"); }
-  catch { return {}; }
+type InboxActivity = {
+  _id: string;
+  chapter_id?: number;
+  chapter_title?: string;
+  message: string;
+};
+
+function getSeenIds(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    return Array.isArray(value) ? value : [];
+  }
+  catch { return []; }
 }
 
-function saveSeenMap(map: Record<number, number>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+function saveSeenIds(ids: string[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
 }
 
 export function useNotifications(address: string | null) {
-  const [count, setCount] = useState(0);
-  const [items, setItems] = useState<NotifItem[]>([]);
-  const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const inbox = useQuery(
+    api.world.getInboxActivity,
+    address ? { address, limit: 20 } : "skip"
+  ) as InboxActivity[] | undefined;
+  const [seen, setSeen] = useState<string[]>(() => getSeenIds());
 
-  const poll = useCallback(async (addr: string) => {
-    try {
-      const chapters = await getChapters(0, 100);
-      const mine = chapters.filter((c) => c.creator.toLowerCase() === addr.toLowerCase());
-      const seen = getSeenMap();
-
-      // First time seeing a chapter — set baseline, no notification
-      let baselineUpdated = false;
-      for (const ch of mine) {
-        if (!(ch.id in seen)) {
-          seen[ch.id] = ch.attempt_count;
-          baselineUpdated = true;
-        }
-      }
-      if (baselineUpdated) saveSeenMap(seen);
-
-      const newItems: NotifItem[] = [];
-      for (const ch of mine) {
-        const delta = ch.attempt_count - (seen[ch.id] ?? ch.attempt_count);
-        if (delta > 0) newItems.push({ chapterId: ch.id, title: ch.title, newAttempts: delta });
-      }
-
-      setCount(newItems.reduce((s, n) => s + n.newAttempts, 0));
-      setItems(newItems);
-    } catch { /* RPC unavailable */ }
-  }, []);
+  const items = useMemo<NotifItem[]>(() => {
+    if (!inbox) return [];
+    const seenSet = new Set(seen);
+    return inbox
+      .filter((item) => !seenSet.has(item._id))
+      .map((item) => ({
+        id: item._id,
+        chapterId: item.chapter_id,
+        title: item.chapter_title ?? "ChainTales",
+        message: item.message,
+      }));
+  }, [inbox, seen]);
 
   const markAllRead = useCallback(() => {
-    getChapters(0, 100).then((chapters) => {
-      if (!address) return;
-      const mine = chapters.filter((c) => c.creator.toLowerCase() === address.toLowerCase());
-      const seen = getSeenMap();
-      for (const ch of mine) seen[ch.id] = ch.attempt_count;
-      saveSeenMap(seen);
-      setCount(0);
-      setItems([]);
-    }).catch(() => {});
-  }, [address]);
+    if (!inbox) return;
+    const ids = inbox.map((item) => item._id);
+    saveSeenIds(ids);
+    setSeen(ids);
+  }, [inbox]);
 
-  useEffect(() => {
-    if (!address) { setCount(0); setItems([]); return; }
-    poll(address);
-    timer.current = setInterval(() => poll(address), POLL_MS);
-    return () => clearInterval(timer.current);
-  }, [address, poll]);
-
-  return { count, items, markAllRead };
+  return { count: items.length, items, markAllRead };
 }

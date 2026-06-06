@@ -8,8 +8,11 @@ import {
   Chapter, Attempt,
 } from "@/lib/genlayer";
 import ActionInput from "@/components/ActionInput";
+import { ChapterActivityFeed } from "@/components/ActivityFeed";
 import { useToast } from "@/components/Toast";
 import Link from "next/link";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 export default function ChapterPage() {
   const params = useParams();
@@ -21,6 +24,7 @@ export default function ChapterPage() {
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const recordActivity = useMutation(api.world.recordActivity);
 
   useEffect(() => {
     async function load() {
@@ -59,7 +63,37 @@ export default function ChapterPage() {
     ]);
     setChapter(updatedCh);
     setAttempts(updatedAttempts);
-    return { attempt: updatedAttempts[updatedAttempts.length - 1] ?? null, txHash };
+    const attempt = updatedAttempts[updatedAttempts.length - 1] ?? null;
+    if (attempt) {
+      await recordActivity({
+        type: "attempt_submitted",
+        actor: accounts[0],
+        target_address: chapter.creator,
+        chapter_id: chapterId,
+        chapter_title: chapter.title,
+        tx_hash: txHash,
+        message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} ${attempt.success ? "won" : "attempted"} ${chapter.title}.`,
+        success: attempt.success,
+        roll: attempt.roll,
+      }).catch(() => {});
+
+      const oldLeader = chapter.fomo_winner.explorer.toLowerCase();
+      const newLeader = updatedCh.fomo_winner.explorer.toLowerCase();
+      if (attempt.success && newLeader !== oldLeader) {
+        await recordActivity({
+          type: "winner_changed",
+          actor: accounts[0],
+          target_address: oldLeader.startsWith("0x000000") ? chapter.creator : oldLeader,
+          chapter_id: chapterId,
+          chapter_title: chapter.title,
+          tx_hash: txHash,
+          message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} became the FOMO leader for ${chapter.title}.`,
+          success: true,
+          roll: attempt.roll,
+        }).catch(() => {});
+      }
+    }
+    return { attempt, txHash };
   }
 
   async function handleClose() {
@@ -74,6 +108,15 @@ export default function ChapterPage() {
       const txHash = await closeChapter(writeClient, chapterId);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
+      await recordActivity({
+        type: "chapter_closed",
+        actor: accounts[0],
+        target_address: chapter?.fomo_winner.explorer,
+        chapter_id: chapterId,
+        chapter_title: chapter?.title,
+        tx_hash: txHash,
+        message: `${chapter?.title ?? "A chapter"} was closed.`,
+      }).catch(() => {});
       dismiss(tid);
       success("Chapter closed", "The FOMO winner can now claim their prize.", { href: explorerTxUrl(txHash), label: "View transaction" });
       const updatedCh = await getChapter(chapterId);
@@ -221,7 +264,7 @@ export default function ChapterPage() {
 
       {/* Action input */}
       {chapter.active && (
-        <div className="space-y-3">
+      <div className="space-y-3">
           <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
             <span className="gold-divider flex-1" />Submit Your Action<span className="gold-divider flex-1" />
           </h2>
@@ -278,6 +321,8 @@ export default function ChapterPage() {
           </div>
         </div>
       )}
+
+      <ChapterActivityFeed chapterId={chapterId} />
     </div>
   );
 }

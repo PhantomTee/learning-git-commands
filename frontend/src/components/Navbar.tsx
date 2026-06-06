@@ -23,6 +23,7 @@ export default function Navbar() {
   const [switching, setSwitching]   = useState(false);
   const { info, error: toastErr } = useToast();
   const { count: notifCount, items: notifItems, markAllRead } = useNotifications(address);
+  const notifTitle = notifCount > 0 ? notifItems[0]?.message ?? `${notifCount} new updates` : "No new notifications";
 
   // ── Switch / add the Genlayer studionet in MetaMask ──────────────────────
   const switchNetwork = useCallback(async () => {
@@ -164,7 +165,7 @@ export default function Navbar() {
             {address && (
               <button
                 onClick={markAllRead}
-                title={notifCount > 0 ? `${notifCount} new attempt${notifCount > 1 ? "s" : ""} on your chapters` : "No new notifications"}
+                title={notifTitle}
                 className="relative text-amber-200/60 hover:text-amber-300 transition-colors px-2 py-1 rounded text-xs font-display tracking-wider"
               >
                 Notifs
@@ -248,7 +249,7 @@ export default function Navbar() {
               className="w-full max-w-xs flex items-center justify-between px-6 py-3 rounded-xl font-display text-sm mt-2"
               style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)", color: "#f87171" }}
             >
-              <span>{notifCount} new attempt{notifCount > 1 ? "s" : ""} on your chapters</span>
+              <span>{notifItems[0]?.message ?? `${notifCount} new updates`}</span>
               <span className="text-xs opacity-60">Dismiss</span>
             </button>
           )}

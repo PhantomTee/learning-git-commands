@@ -1,6 +1,7 @@
 import { getChapters, Chapter } from "@/lib/genlayer-server";
 import ChapterCard from "@/components/ChapterCard";
 import WorldMap from "@/components/WorldMap";
+import { RecentActivityFeed } from "@/components/ActivityFeed";
 import Link from "next/link";
 
 export const revalidate = 30;
@@ -59,6 +60,8 @@ export default async function HomePage() {
       </div>
 
       <div className="gold-divider" />
+
+      <RecentActivityFeed />
 
       {/* ── World Map ── */}
       <section className="space-y-4">

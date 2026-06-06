@@ -86,3 +86,82 @@ export const getMessages = query({
     return messages.reverse();
   },
 });
+
+// ── Activity feed ────────────────────────────────────────────────────────────
+
+const activityType = v.union(
+  v.literal("chapter_created"),
+  v.literal("attempt_submitted"),
+  v.literal("winner_changed"),
+  v.literal("chapter_closed"),
+  v.literal("prize_claimed"),
+  v.literal("nft_minted"),
+  v.literal("nft_listed"),
+  v.literal("nft_sold"),
+);
+
+export const recordActivity = mutation({
+  args: {
+    type: activityType,
+    actor: v.string(),
+    target_address: v.optional(v.string()),
+    chapter_id: v.optional(v.number()),
+    chapter_title: v.optional(v.string()),
+    nft_token_id: v.optional(v.number()),
+    amount_wei: v.optional(v.string()),
+    tx_hash: v.string(),
+    message: v.string(),
+    success: v.optional(v.boolean()),
+    roll: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("activity")
+      .withIndex("by_tx_hash", (q) => q.eq("tx_hash", args.tx_hash))
+      .collect();
+
+    if (existing.some((item) => item.type === args.type)) {
+      return;
+    }
+
+    await ctx.db.insert("activity", {
+      ...args,
+      actor: args.actor.toLowerCase(),
+      target_address: args.target_address?.toLowerCase(),
+      created_at: Date.now(),
+    });
+  },
+});
+
+export const getRecentActivity = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }) => {
+    return ctx.db
+      .query("activity")
+      .withIndex("by_created_at")
+      .order("desc")
+      .take(Math.min(limit ?? 20, 50));
+  },
+});
+
+export const getChapterActivity = query({
+  args: { chapter_id: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, { chapter_id, limit }) => {
+    return ctx.db
+      .query("activity")
+      .withIndex("by_chapter", (q) => q.eq("chapter_id", chapter_id))
+      .order("desc")
+      .take(Math.min(limit ?? 20, 50));
+  },
+});
+
+export const getInboxActivity = query({
+  args: { address: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { address, limit }) => {
+    return ctx.db
+      .query("activity")
+      .withIndex("by_target", (q) => q.eq("target_address", address.toLowerCase()))
+      .order("desc")
+      .take(Math.min(limit ?? 20, 50));
+  },
+});

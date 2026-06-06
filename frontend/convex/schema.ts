@@ -32,4 +32,23 @@ export default defineSchema({
     fomo_winner: v.string(),
     updated_at: v.number(),
   }).index("by_chapter_id", ["chapter_id"]),
+
+  activity: defineTable({
+    type: v.string(),
+    actor: v.string(),
+    target_address: v.optional(v.string()),
+    chapter_id: v.optional(v.number()),
+    chapter_title: v.optional(v.string()),
+    nft_token_id: v.optional(v.number()),
+    amount_wei: v.optional(v.string()),
+    tx_hash: v.string(),
+    message: v.string(),
+    success: v.optional(v.boolean()),
+    roll: v.optional(v.number()),
+    created_at: v.number(),
+  })
+    .index("by_created_at", ["created_at"])
+    .index("by_chapter", ["chapter_id", "created_at"])
+    .index("by_target", ["target_address", "created_at"])
+    .index("by_tx_hash", ["tx_hash"]),
 });

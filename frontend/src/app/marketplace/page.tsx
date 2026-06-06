@@ -21,6 +21,8 @@ import {
 } from "@/lib/genlayer";
 import { generateNftSvg, svgToDataUri } from "@/lib/nft-svg";
 import { useToast } from "@/components/Toast";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 const MAX_SUPPLY = 100;
 
@@ -47,6 +49,7 @@ export default function MarketplacePage() {
   const [listPrice, setListPrice]   = useState("");
 
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const recordActivity = useMutation(api.world.recordActivity);
 
   const loadData = useCallback(async (addr: string | null) => {
     try {
@@ -92,6 +95,15 @@ export default function MarketplacePage() {
       const txHash = await mintCreatorNft(wc);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
+      const nextTokenId = supply + 1;
+      await recordActivity({
+        type: "nft_minted",
+        actor: addr,
+        nft_token_id: nextTokenId,
+        amount_wei: NFT_MINT_PRICE.toString(),
+        tx_hash: txHash,
+        message: `${addr.slice(0, 6)}...${addr.slice(-4)} minted Creator NFT #${nextTokenId}.`,
+      }).catch(() => {});
       dismiss(tid);
       success("Creator NFT minted!", "You are now a Creator.", { href: explorerTxUrl(txHash), label: "View transaction" });
       await loadData(addr);
@@ -111,6 +123,14 @@ export default function MarketplacePage() {
       const txHash = await listNft(wc, tokenId, genToWei(genAmount));
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
+      await recordActivity({
+        type: "nft_listed",
+        actor: addr,
+        nft_token_id: tokenId,
+        amount_wei: genToWei(genAmount).toString(),
+        tx_hash: txHash,
+        message: `${addr.slice(0, 6)}...${addr.slice(-4)} listed Creator NFT #${tokenId} for ${genAmount} GEN.`,
+      }).catch(() => {});
       dismiss(tid);
       success("NFT listed!", `Creator NFT #${tokenId} is now for sale at ${genAmount} GEN.`);
       setListingFor(null);
@@ -146,6 +166,15 @@ export default function MarketplacePage() {
       const txHash = await buyNft(wc, nft.token_id, BigInt(nft.price));
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
+      await recordActivity({
+        type: "nft_sold",
+        actor: addr,
+        target_address: nft.owner,
+        nft_token_id: nft.token_id,
+        amount_wei: String(nft.price),
+        tx_hash: txHash,
+        message: `${addr.slice(0, 6)}...${addr.slice(-4)} bought Creator NFT #${nft.token_id}.`,
+      }).catch(() => {});
       dismiss(tid);
       success("NFT purchased!", `You now hold Creator NFT #${nft.token_id}.`);
       await loadData(addr);
