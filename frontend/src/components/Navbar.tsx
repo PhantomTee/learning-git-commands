@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
-import { createWriteClient } from "@/lib/genlayer";
+import { createWriteClient, getCreatorNft } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -21,9 +21,15 @@ export default function Navbar() {
   const [wrongNetwork, setWrong]    = useState(false);
   const [menuOpen, setMenuOpen]     = useState(false);
   const [switching, setSwitching]   = useState(false);
+  const [creatorNftId, setCreatorNftId] = useState(0);
   const { info, error: toastErr } = useToast();
   const { count: notifCount, items: notifItems, markAllRead } = useNotifications(address);
   const notifTitle = notifCount > 0 ? notifItems[0]?.message ?? `${notifCount} new updates` : "No new notifications";
+
+  const loadCreatorNft = useCallback(async (addr: string) => {
+    try { setCreatorNftId(await getCreatorNft(addr)); }
+    catch { setCreatorNftId(0); }
+  }, []);
 
   // ── Switch / add the Genlayer studionet in MetaMask ──────────────────────
   const switchNetwork = useCallback(async () => {
@@ -65,7 +71,10 @@ export default function Navbar() {
     if (!eth) return;
 
     eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
-      if (accs[0]) setAddress(accs[0]);
+      if (accs[0]) {
+        setAddress(accs[0]);
+        loadCreatorNft(accs[0]);
+      }
     });
 
     function onChainChanged(chainId: string) {
@@ -75,7 +84,7 @@ export default function Navbar() {
     eth.request({ method: "eth_chainId" }).then(onChainChanged);
     eth.on?.("chainChanged", onChainChanged);
     return () => eth.removeListener?.("chainChanged", onChainChanged);
-  }, []);
+  }, [loadCreatorNft]);
 
   // ── Lock scroll when mobile menu is open ─────────────────────────────────
   useEffect(() => {
@@ -90,6 +99,7 @@ export default function Navbar() {
 
     const accounts = await eth.request({ method: "eth_requestAccounts" });
     setAddress(accounts[0]);
+    await loadCreatorNft(accounts[0]);
 
     // Auto-switch to studionet on connect if on wrong chain
     const chainId: string = await eth.request({ method: "eth_chainId" });
@@ -155,6 +165,7 @@ export default function Navbar() {
               { href: "/chapter/create",label: "Create Chapter" },
               { href: "/leaderboard",   label: "Leaderboard"   },
               { href: "/character",     label: "My Character"  },
+              ...(creatorNftId > 0 ? [{ href: `/marketplace/${creatorNftId}`, label: "My NFT" }] : []),
             ].map(({ href, label }) => (
               <Link key={href} href={href}
                 className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
@@ -235,6 +246,7 @@ export default function Navbar() {
             { href: "/chapter/create", label: "Create Chapter" },
             { href: "/leaderboard",    label: "Leaderboard"    },
             { href: "/character",      label: "My Character"   },
+            ...(creatorNftId > 0 ? [{ href: `/marketplace/${creatorNftId}`, label: "My Creator NFT" }] : []),
           ].map(({ href, label }) => (
             <Link key={href} href={href} onClick={close}
               className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"

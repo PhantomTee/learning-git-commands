@@ -49,6 +49,7 @@ export default defineSchema({
   })
     .index("by_created_at", ["created_at"])
     .index("by_chapter", ["chapter_id", "created_at"])
+    .index("by_nft", ["nft_token_id", "created_at"])
     .index("by_target", ["target_address", "created_at"])
     .index("by_tx_hash", ["tx_hash"]),
 });

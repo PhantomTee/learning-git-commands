@@ -155,6 +155,17 @@ export const getChapterActivity = query({
   },
 });
 
+export const getNftActivity = query({
+  args: { nft_token_id: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, { nft_token_id, limit }) => {
+    return ctx.db
+      .query("activity")
+      .withIndex("by_nft", (q) => q.eq("nft_token_id", nft_token_id))
+      .order("desc")
+      .take(Math.min(limit ?? 20, 50));
+  },
+});
+
 export const getInboxActivity = query({
   args: { address: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, { address, limit }) => {

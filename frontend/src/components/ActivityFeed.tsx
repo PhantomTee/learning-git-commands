@@ -126,3 +126,22 @@ export function ChapterActivityFeed({ chapterId, limit = 8 }: { chapterId: numbe
     </div>
   );
 }
+
+export function NftActivityFeed({ tokenId, limit = 8 }: { tokenId: number; limit?: number }) {
+  const activities = useQuery(api.world.getNftActivity, { nft_token_id: tokenId, limit }) as Activity[] | undefined;
+
+  if (!activities || activities.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-display text-xs text-amber-200/60 tracking-widest uppercase flex items-center gap-3">
+        <span className="gold-divider flex-1" />NFT History<span className="gold-divider flex-1" />
+      </h2>
+      <div className="space-y-3">
+        {activities.map((activity) => (
+          <ActivityRow key={activity._id} activity={activity} />
+        ))}
+      </div>
+    </div>
+  );
+}

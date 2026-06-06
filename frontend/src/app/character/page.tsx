@@ -207,12 +207,12 @@ export default function CharacterPage() {
               <div className="flex items-center gap-3">
                 <div>
                   <p className="font-display font-bold text-amber-400 text-sm">Creator NFT #{creatorNftId}</p>
-                  <p className="text-xs text-amber-900/60">You hold a Creator seat · Can write chapters</p>
+                  <p className="text-xs text-amber-200/60">You hold a Creator seat · Can write chapters</p>
                 </div>
               </div>
-              <Link href="/marketplace"
-                className="text-xs font-display tracking-widest text-amber-900/60 hover:text-amber-400 transition-colors">
-                Marketplace →
+              <Link href={`/marketplace/${creatorNftId}`}
+                className="text-xs font-display tracking-widest text-amber-300 hover:text-amber-200 transition-colors">
+                Manage NFT →
               </Link>
             </div>
           )}

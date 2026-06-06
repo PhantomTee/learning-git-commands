@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { NftActivityFeed } from "@/components/ActivityFeed";
 import CreatorNftImage from "@/components/CreatorNftImage";
 import { useToast } from "@/components/Toast";
 import {
@@ -195,6 +196,9 @@ export default function CreatorNftPage() {
   const isOwner = address?.toLowerCase() === nft.owner.toLowerCase();
   const holdsNft = myTokenId > 0;
   const listed = nft.price > 0;
+  const statusStyle = listed
+    ? { border: "1px solid rgba(74,222,128,0.35)", background: "rgba(74,222,128,0.08)", color: "#86efac" }
+    : { border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.06)", color: "#fcd34d" };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -210,9 +214,14 @@ export default function CreatorNftPage() {
         <div className="panel p-5 space-y-5">
           <div className="space-y-2">
             <p className="font-display text-xs tracking-widest uppercase text-amber-200/60">Creator Seat</p>
-            <h1 className="font-display font-black text-3xl text-amber-400 tracking-wider">
-              Creator NFT #{nft.token_id}
-            </h1>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <h1 className="font-display font-black text-3xl text-amber-400 tracking-wider">
+                Creator NFT #{nft.token_id}
+              </h1>
+              <span className="px-3 py-1 rounded-full text-xs font-display tracking-widest uppercase" style={statusStyle}>
+                {listed ? "For Sale" : "Held"}
+              </span>
+            </div>
             <p className="text-sm text-amber-200/70">
               This NFT grants chapter creation access for ChainTales.
             </p>
@@ -227,7 +236,7 @@ export default function CreatorNftPage() {
             </div>
             <div className="rounded-lg p-3" style={{ background: "rgba(0,0,0,0.28)", border: "1px solid rgba(245,158,11,0.15)" }}>
               <p className="font-display text-xs tracking-widest uppercase text-amber-200/55">Status</p>
-              <p className="font-display text-amber-300 mt-1">{listed ? `Listed at ${formatGEN(nft.price)}` : "Not listed"}</p>
+              <p className="font-display text-amber-300 mt-1">{listed ? `For sale at ${formatGEN(nft.price)}` : "Not listed for sale"}</p>
             </div>
           </div>
 
@@ -291,6 +300,8 @@ export default function CreatorNftPage() {
           )}
         </div>
       </div>
+
+      <NftActivityFeed tokenId={tokenId} />
     </div>
   );
 }
