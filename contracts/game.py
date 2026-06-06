@@ -362,15 +362,28 @@ class ChainTales(gl.Contract):
         self.creator_balances[ch.creator] = self._creator_balance(ch.creator) + creator_cut
         self._state["protocol_balance"] = self._protocol_balance() + protocol_cut
 
-        character  = self.characters[ckey]
-        attempt_idx = int(ch.attempt_count)
-        roll       = self._derive_roll(chapter_id, attempt_idx, int(character.agility))
-        difficulty = int(ch.difficulty)
+        character = self.characters[ckey]
 
-        safe_scenario      = self._esc(ch.scenario)
-        safe_win_condition = self._esc(ch.win_condition)
-        safe_action        = self._esc(action)
-        safe_name          = self._esc(character.name)
+        # Snapshot storage-backed values before nondet execution. The nondet
+        # prompt must only close over plain Python values, not storage objects.
+        char_name = str(character.name)
+        char_class = str(character.character_class)
+        char_strength = int(character.strength)
+        char_intelligence = int(character.intelligence)
+        char_agility = int(character.agility)
+
+        chapter_scenario = str(ch.scenario)
+        chapter_win_condition = str(ch.win_condition)
+        chapter_difficulty = int(ch.difficulty)
+        attempt_idx = int(ch.attempt_count)
+
+        roll = self._derive_roll(chapter_id, attempt_idx, char_agility)
+        difficulty = chapter_difficulty
+
+        safe_scenario = self._esc(chapter_scenario)
+        safe_win_condition = self._esc(chapter_win_condition)
+        safe_action = self._esc(action)
+        safe_name = self._esc(char_name)
 
         def judge() -> str:
             return gl.nondet.exec_prompt(
@@ -382,8 +395,8 @@ System rules:
 <chapter_scenario>{safe_scenario}</chapter_scenario>
 <win_condition>{safe_win_condition}</win_condition>
 <character>
-  Name: {safe_name}, Class: {character.character_class}
-  STR: {int(character.strength)}, INT: {int(character.intelligence)}, AGI: {int(character.agility)}
+  Name: {safe_name}, Class: {char_class}
+  STR: {char_strength}, INT: {char_intelligence}, AGI: {char_agility}
 </character>
 <explorer_action>{safe_action}</explorer_action>
 
@@ -417,9 +430,9 @@ Return ONLY valid JSON:
         success    = final_roll >= difficulty
 
         if success:
-            judgment = f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} succeeds."
+            judgment = f"[{final_roll}/{difficulty}] {char_name} the {char_class} succeeds."
         else:
-            judgment = f"[{final_roll}/{difficulty}] {character.name} the {character.character_class} falls short."
+            judgment = f"[{final_roll}/{difficulty}] {char_name} the {char_class} falls short."
 
         if success:
             self.fomo_winners[chapter_id] = FomoWinner(

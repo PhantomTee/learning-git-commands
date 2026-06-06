@@ -44,11 +44,11 @@ export default function ChapterPage() {
     const eth = (window as any).ethereum;
     if (eth) {
       eth.request({ method: "eth_accounts" }).then(async (a: string[]) => {
-            if (a[0]) {
-                      setWalletAddress(a[0]);
-                            const exists = await hasCharacter(a[0]).catch(() => false);
-                                  setHasChar(exists);
-            }
+        if (a[0]) {
+          setWalletAddress(a[0]);
+          const exists = await hasCharacter(a[0]).catch(() => false);
+          setHasChar(exists);
+        }
       });
     }
   }, [chapterId]);
@@ -281,7 +281,7 @@ export default function ChapterPage() {
 
       {/* Action input */}
       {chapter.active && (
-      <div className="space-y-3">
+        <div className="space-y-3">
           <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
             <span className="gold-divider flex-1" />Submit Your Action<span className="gold-divider flex-1" />
           </h2>
@@ -290,12 +290,23 @@ export default function ChapterPage() {
               Connect your wallet to play · {priceGEN} per action · Max 3 attempts per chapter
             </p>
           )}
+          {walletAddress && hasChar === false && (
+            <div className="panel p-4 text-center space-y-3"
+              style={{ border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.04)" }}>
+              <p className="text-sm text-amber-200/70 font-display">
+                Create a character before submitting actions.
+              </p>
+              <Link href="/character" className="btn-gold inline-block px-4 py-2 rounded-lg text-xs">
+                Create Character
+              </Link>
+            </div>
+          )}
           <ActionInput
             chapterId={chapterId}
             winCondition={chapter.win_condition}
             priceGEN={priceGEN}
             onSubmit={handleAction}
-            disabled={!chapter.active}
+            disabled={!chapter.active || hasChar === false}
           />
         </div>
       )}
