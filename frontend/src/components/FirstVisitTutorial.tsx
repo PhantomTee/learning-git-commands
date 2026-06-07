@@ -52,11 +52,7 @@ export default function FirstVisitTutorial() {
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-6"
-      style={{
-        background: "#050307",
-        backgroundImage: "linear-gradient(rgba(245,158,11,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.03) 1px, transparent 1px)",
-        backgroundSize: "18px 18px",
-      }}
+      style={{ background: "rgba(5,3,7,0.82)", backdropFilter: "blur(10px)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"

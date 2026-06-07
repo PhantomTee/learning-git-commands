@@ -143,7 +143,7 @@ export default function Navbar() {
         <button
           onClick={switchNetwork}
           disabled={switching}
-          className="flex items-center gap-2 px-3 py-1.5 border-2 border-red-800/70 hover:border-red-500 transition-colors text-xs font-display tracking-wider uppercase"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-800/60 hover:border-red-600 transition-colors text-xs font-display tracking-wider"
           style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}
         >
           {switching ? "Switching…" : "Switch to Genlayer"}
@@ -155,10 +155,10 @@ export default function Navbar() {
         type="button"
         onClick={disconnect}
         title="Disconnect wallet"
-        className="group flex items-center gap-2 px-3 py-1.5 border-2 border-amber-900/60 hover:border-amber-500/80 transition-colors shadow-[3px_3px_0_#000]"
+        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50 hover:border-amber-500/60 transition-colors"
         style={{ background: "rgba(245,158,11,0.05)" }}
       >
-        <span className="w-2 h-2 bg-amber-400" />
+        <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
         <span className="font-mono text-xs text-amber-200 group-hover:text-amber-100 transition-colors">
           {address.slice(0, 6)}…{address.slice(-4)}
         </span>
@@ -170,12 +170,12 @@ export default function Navbar() {
     <>
       {/* ── Fixed navbar ── */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b-2 border-amber-900/60 shadow-[0_4px_0_#000]"
-        style={{ background: "#120d10" }}
+        className="fixed top-0 left-0 right-0 z-50 border-b border-amber-900/40"
+        style={{ background: "linear-gradient(180deg,#1a0f12 0%,#120d10 100%)" }}
       >
         <div className="h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="group" onClick={close}>
             <span className="font-display font-black text-lg sm:text-xl tracking-widest text-amber-400 group-hover:text-amber-300 transition-colors">
@@ -184,7 +184,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-4 lg:gap-6 whitespace-nowrap">
+          <div className="hidden md:flex items-center gap-6">
             {[
               { href: "/",               label: "World Map"      },
               { href: "/marketplace",   label: "Marketplace"    },
@@ -196,7 +196,7 @@ export default function Navbar() {
             ].map(({ href, label }) => (
               <Link key={href} href={href}
                 title={href === "/notifications" && notifCount > 0 ? `${notifCount} unread notifications` : undefined}
-                className="relative whitespace-nowrap text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
+                className="relative text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
                 {label}
                 {href === "/notifications" && notifCount > 0 && (
                   <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
@@ -209,7 +209,7 @@ export default function Navbar() {
             {address ? (
               <WalletBadge />
             ) : (
-              <button onClick={connect} className="btn-gold px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">
+              <button onClick={connect} className="btn-gold px-4 py-1.5 rounded-lg text-xs">
                 Connect Wallet
               </button>
             )}
@@ -221,7 +221,7 @@ export default function Navbar() {
             <button
               onClick={() => setMenuOpen((o) => !o)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
-              className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 border-2 border-amber-900/60 hover:border-amber-500/80 transition-colors shadow-[3px_3px_0_#000]"
+              className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-amber-900/40 hover:border-amber-500/50 transition-colors"
               style={{ background: "rgba(0,0,0,0.4)" }}
             >
               <span className={`block w-5 h-0.5 bg-amber-400 transition-all duration-300 origin-center ${menuOpen ? "rotate-45 translate-y-2"  : ""}`} />
@@ -239,11 +239,7 @@ export default function Navbar() {
         className={`fixed inset-0 z-[60] md:hidden flex flex-col transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
-        style={{
-          background: "#08050a",
-          backgroundImage: "linear-gradient(rgba(245,158,11,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.035) 1px, transparent 1px)",
-          backgroundSize: "18px 18px",
-        }}
+        style={{ background: "rgba(8,5,10,0.97)", backdropFilter: "blur(16px)" }}
       >
         {/* Overlay header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-amber-900/30">
@@ -252,7 +248,7 @@ export default function Navbar() {
             CHAINTALES
           </Link>
           <button onClick={close} aria-label="Close menu"
-            className="w-10 h-10 flex items-center justify-center border-2 border-amber-900/60 text-amber-400 hover:text-amber-200 hover:border-amber-500/80 transition-colors text-xl shadow-[3px_3px_0_#000]"
+            className="w-10 h-10 flex items-center justify-center rounded-lg border border-amber-900/50 text-amber-400 hover:text-amber-200 hover:border-amber-500/70 transition-colors text-xl"
             style={{ background: "rgba(0,0,0,0.5)" }}>
             ✕
           </button>
@@ -272,8 +268,8 @@ export default function Navbar() {
             ...(creatorNftId > 0 ? [{ href: `/marketplace/${creatorNftId}`, label: "My Creator NFT" }] : []),
           ].map(({ href, label }) => (
             <Link key={href} href={href} onClick={close}
-              className="w-full max-w-xs flex items-center justify-between gap-4 px-6 py-4 font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors shadow-[4px_4px_0_#000]"
-              style={{ border: "2px solid rgba(245,158,11,0.42)", background: "rgba(245,158,11,0.04)" }}>
+              className="w-full max-w-xs flex items-center justify-between gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"
+              style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.04)" }}>
               <span>{label}</span>
               {href === "/notifications" && notifCount > 0 && (
                 <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
@@ -297,10 +293,10 @@ export default function Navbar() {
           ) : (
             <button
               onClick={disconnect}
-              className="mt-4 flex items-center gap-2 px-4 py-2 border-2 border-amber-900/60 hover:border-amber-500/80 transition-colors shadow-[3px_3px_0_#000]"
+              className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-amber-900/50 hover:border-amber-500/60 transition-colors"
               style={{ background: "rgba(245,158,11,0.05)" }}
             >
-              <span className="w-2 h-2 bg-amber-400" />
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span className="font-mono text-xs text-amber-200">{address.slice(0, 8)}…{address.slice(-6)}</span>
             </button>
           )}
