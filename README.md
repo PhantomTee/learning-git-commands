@@ -8,14 +8,17 @@ No oracles. No off-chain APIs. Everything — AI judgment, scenario generation, 
 
 ## How it works
 
-### Creators
-Hold a Creator NFT (one of 100) to unlock chapter authorship. Write a scenario, set a win condition and difficulty, and publish it on-chain. Every attempt by an explorer sends GEN directly to the chapter's prize pool and your creator balance.
+### Creator
+Creators hold a Creator NFT and publish prize-backed chapters. A chapter has a scenario, win condition, difficulty, action price, and upfront publish deposit. The publish deposit goes straight into that chapter's prize pool. Higher difficulty applies a larger deposit multiplier.
 
-### Explorers
-Submit a free-text action against any active chapter. The on-chain AI reads the scenario, the win condition, your character class and stats, and the action — then returns a verdict that modifies your d20 roll. Beat the difficulty and you become the FOMO leader, holding the right to claim the prize pool when the chapter closes.
+### Explorer
+Explorers create a character, choose an active chapter, and pay the listed action price for each attempt. The on-chain AI dungeon master judges the action against the chapter scenario, win condition, and character stats.
 
-### FOMO mechanic
-Only the last winning explorer at close time claims the prize. Every new winner bumps the previous one. Chapters accumulate GEN the entire time they're open.
+### Current Leader
+A successful action makes the explorer the current leader for that active chapter. The chapter stays open. Other explorers can still attempt it and replace the current leader before close.
+
+### Final Winner
+When the chapter closes, the current leader becomes the final winner. Only then can that address claim the prize pool. If the chapter closes with no current leader, the pool goes to protocol.
 
 ---
 
@@ -198,12 +201,24 @@ After deployment the script reads the contract address from the GenLayer receipt
 
 ## Economics
 
-| Flow | Split |
+| Flow | Destination |
 |---|---|
-| Explorer pays per action | 60% prize pool · 30% creator · 10% protocol |
-| Creator NFT mint | 5 GEN to protocol |
-| Scenario generation | 10 GEN to protocol |
+| Chapter publish deposit | 100% to that chapter's prize pool |
+| Explorer attempt payment | 60% prize pool · 30% chapter creator · 10% protocol |
+| Creator NFT mint | Protocol |
+| AI scenario generation | Protocol |
 | NFT secondary sale | 100% to seller (instant on-chain transfer) |
+
+Publish deposits use a creator-chosen base prize multiplied by chapter difficulty:
+
+| Difficulty | Multiplier |
+|---|---:|
+| 1 | 1.0x |
+| 2–7 | 1.1x |
+| 8–15 | 1.3x |
+| 16–20 | 1.5x |
+
+Example: a 100 GEN base prize requires 100 GEN at difficulty 1, 110 GEN at difficulty 2–7, 130 GEN at difficulty 8–15, and 150 GEN at difficulty 16–20.
 
 ---
 
@@ -220,7 +235,7 @@ frontend/
       chapter/[id]/page.tsx    # Chapter detail — action input + attempt feed
       chapter/create/page.tsx  # Chapter creation + AI scenario generation
       character/page.tsx       # Character sheet + creator earnings + prize claims
-      leaderboard/page.tsx     # Hall of legends — FOMO winners ranked by roll
+      leaderboard/page.tsx     # Hall of legends — current leaders and final winners ranked by roll
       marketplace/page.tsx     # Creator NFT mint, buy, list, delist
 
     components/

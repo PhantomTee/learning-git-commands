@@ -46,13 +46,15 @@ export async function createChapter(
   scenario: string,
   winCondition: string,
   difficulty: number,
-  pricePerAttemptWei: bigint
+  basePrizeWei: bigint,
+  pricePerAttemptWei: bigint,
+  publishDepositWei: bigint
 ) {
   return writeClient.writeContract({
     address: CONTRACT_ADDRESS,
     functionName: "create_chapter",
-    args: [title, scenario, winCondition, difficulty, pricePerAttemptWei],
-    value: BigInt(0),
+    args: [title, scenario, winCondition, difficulty, basePrizeWei, pricePerAttemptWei],
+    value: publishDepositWei,
   }) as unknown as Promise<`0x${string}`>;
 }
 

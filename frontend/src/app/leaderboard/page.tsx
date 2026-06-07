@@ -28,7 +28,7 @@ export default async function LeaderboardPage() {
           HALL OF LEGENDS
         </h1>
         <p className="text-amber-200/50 text-sm font-display tracking-wide">
-          FOMO leaders — the last explorer to conquer each chapter
+          Current leaders for active chapters and final winners for closed chapters
         </p>
       </div>
 
@@ -110,8 +110,8 @@ export default async function LeaderboardPage() {
       {ranked.length > 0 && (
         <div className="panel p-4 grid grid-cols-3 gap-4 text-center">
           {[
-            { label: "Total Winners", value: ranked.length },
-            { label: "Total Prizes", value: formatGEN(ranked.reduce((s, e) => s + e.prize_pool, 0)) },
+            { label: "Leaders", value: ranked.length },
+            { label: "Final Pools", value: formatGEN(ranked.reduce((s, e) => s + e.prize_pool, 0)) },
             { label: "Claimed", value: ranked.filter((e) => e.prize_claimed).length },
           ].map(({ label, value }) => (
             <div key={label}>

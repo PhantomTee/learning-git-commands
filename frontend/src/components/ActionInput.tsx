@@ -3,16 +3,18 @@
 import { useState } from "react";
 import { Attempt, explorerTxUrl, normaliseError } from "@/lib/genlayer";
 import { useToast } from "@/components/Toast";
+import type { CharacterGateResult } from "@/hooks/useCharacterGate";
 
 interface Props {
   chapterId: number;
   winCondition: string;
   priceGEN?: string;
-  onSubmit: (action: string) => Promise<{ attempt: Attempt | null; txHash: string }>;
+  onSubmit: (action: string, account?: string) => Promise<{ attempt: Attempt | null; txHash: string }>;
+  beforeSubmit?: () => Promise<CharacterGateResult>;
   disabled?: boolean;
 }
 
-export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled }: Props) {
+export default function ActionInput({ winCondition, priceGEN, onSubmit, beforeSubmit, disabled }: Props) {
   const [action, setAction] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
   const [result, setResult] = useState<Attempt | null>(null);
@@ -22,17 +24,25 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!action.trim() || status === "pending") return;
+
+    const gate = beforeSubmit ? await beforeSubmit() : undefined;
+    if (gate && !gate.ok) return;
+
     setStatus("pending");
     setError(null);
     setResult(null);
     const tid = toastLoading("The dungeon master deliberates…", "Validators reaching consensus — takes 1–3 min");
     try {
-      const { attempt: res, txHash } = await onSubmit(action.trim());
+      const { attempt: res, txHash } = await onSubmit(action.trim(), gate?.account);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       dismiss(tid);
       const link = { href: explorerTxUrl(txHash), label: "View transaction" };
       if (res?.success) {
-        success("Victory!", res.judgment, link);
+        success(
+          "Current Leader",
+          "You defeated the chapter and became the current leader. Hold the lead until the chapter closes to claim the pool.",
+          link
+        );
       } else if (res) {
         toastError("Defeated", res.judgment, link);
       }
@@ -97,7 +107,7 @@ export default function ActionInput({ winCondition, priceGEN, onSubmit, disabled
               <span className="text-xl font-display font-black" style={{ color: result.success ? "#4ade80" : "#f87171" }}>{result.success ? "✓" : "✕"}</span>
               <div>
                 <div className="font-display font-bold text-sm" style={{ color: result.success ? "#4ade80" : "#f87171" }}>
-                  {result.success ? "Victory!" : "Defeated"}
+                  {result.success ? "Current Leader" : "Defeated"}
                 </div>
                 <div className="text-xs text-amber-900/60 font-display">
                   d20 rolled: <span className="text-amber-400 font-bold">{result.roll}</span>

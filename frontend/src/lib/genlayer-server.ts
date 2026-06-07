@@ -8,6 +8,8 @@ export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
 
 export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+export const DEFAULT_BASE_PRIZE_GEN = 100;
+export const BPS_DENOMINATOR = 10000;
 
 export function formatGEN(wei: number | bigint): string {
   const n = typeof wei === "bigint" ? Number(wei) : wei;
@@ -19,6 +21,17 @@ export function formatGEN(wei: number | bigint): string {
 
 export function genToWei(gen: number): bigint {
   return BigInt(Math.floor(gen * 1e18));
+}
+
+export function difficultyMultiplierBps(difficulty: number): number {
+  if (difficulty <= 1) return 10000;
+  if (difficulty <= 7) return 11000;
+  if (difficulty <= 15) return 13000;
+  return 15000;
+}
+
+export function getRequiredPublishDepositLocal(basePrizeWei: bigint, difficulty: number): bigint {
+  return basePrizeWei * BigInt(difficultyMultiplierBps(difficulty)) / BigInt(BPS_DENOMINATOR);
 }
 
 export function hasWinner(chapter: Chapter): boolean {
@@ -142,6 +155,14 @@ export async function hasCharacter(address: string) {
     functionName: "has_character",
     args: [address],
   }) as unknown as Promise<boolean>;
+}
+
+export async function getRequiredPublishDeposit(basePrizeWei: bigint, difficulty: number) {
+  return readClient.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName: "get_required_publish_deposit",
+    args: [basePrizeWei, difficulty],
+  }) as unknown as Promise<bigint>;
 }
 
 export async function getLeaderboard() {

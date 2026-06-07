@@ -36,10 +36,10 @@ function relativeTime(timestamp: number) {
 
 function typeLabel(activity: Activity) {
   if (activity.type === "chapter_created") return "Chapter";
-  if (activity.type === "attempt_submitted") return activity.success ? "Victory" : "Attempt";
+  if (activity.type === "attempt_submitted") return activity.success ? "Leader" : "Attempt";
   if (activity.type === "winner_changed") return "Leader";
   if (activity.type === "chapter_closed") return "Closed";
-  if (activity.type === "prize_claimed") return "Prize";
+  if (activity.type === "prize_claimed") return "Final Pool";
   if (activity.type === "nft_minted") return "Mint";
   if (activity.type === "nft_listed") return "Listing";
   if (activity.type === "nft_sold") return "Sale";

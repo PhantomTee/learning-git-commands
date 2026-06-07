@@ -8,6 +8,7 @@ import { api } from "../../../../convex/_generated/api";
 import { NftActivityFeed } from "@/components/ActivityFeed";
 import CreatorNftImage from "@/components/CreatorNftImage";
 import { useToast } from "@/components/Toast";
+import { useCharacterGate } from "@/hooks/useCharacterGate";
 import {
   buyNft,
   createWriteClient,
@@ -40,6 +41,7 @@ export default function CreatorNftPage() {
   const [busy, setBusy] = useState(false);
   const [listPrice, setListPrice] = useState("");
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const { requireCharacter } = useCharacterGate();
   const recordActivity = useMutation(api.world.recordActivity);
 
   const loadData = useCallback(async (addr: string | null) => {
@@ -67,14 +69,11 @@ export default function CreatorNftPage() {
     init();
   }, [loadData]);
 
-  async function getWriteClient() {
-    const eth = (window as any).ethereum;
-    if (!eth) throw new Error("Install MetaMask to continue");
-    const accounts = await eth.request({ method: "eth_requestAccounts" });
-    setAddress(accounts[0]);
-    const wc = createWriteClient(accounts[0] as `0x${string}`);
+  async function getWriteClient(account: string) {
+    setAddress(account);
+    const wc = createWriteClient(account as `0x${string}`);
     await wc.connect("studionet").catch(() => {});
-    return { wc, addr: accounts[0] as string };
+    return { wc, addr: account };
   }
 
   async function handleList() {
@@ -83,10 +82,13 @@ export default function CreatorNftPage() {
       toastError("Invalid price", "Minimum listing price is 1 GEN");
       return;
     }
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setBusy(true);
     const tid = toastLoading("Listing NFT...", "Writing listing on-chain");
     try {
-      const { wc, addr } = await getWriteClient();
+      const { wc, addr } = await getWriteClient(gate.account);
       const priceWei = genToWei(genAmount);
       const txHash = await listNft(wc, tokenId, priceWei);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
@@ -112,10 +114,13 @@ export default function CreatorNftPage() {
   }
 
   async function handleDelist() {
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setBusy(true);
     const tid = toastLoading("Removing listing...", "Writing update on-chain");
     try {
-      const { wc, addr } = await getWriteClient();
+      const { wc, addr } = await getWriteClient(gate.account);
       const txHash = await delistNft(wc, tokenId);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
@@ -132,10 +137,13 @@ export default function CreatorNftPage() {
 
   async function handleBuy() {
     if (!nft || nft.price <= 0) return;
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setBusy(true);
     const tid = toastLoading(`Buying Creator NFT #${tokenId}...`, "Transferring on-chain");
     try {
-      const { wc, addr } = await getWriteClient();
+      const { wc, addr } = await getWriteClient(gate.account);
       const txHash = await buyNft(wc, tokenId, BigInt(nft.price));
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);

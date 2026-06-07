@@ -17,6 +17,7 @@ import {
 } from "@/lib/genlayer";
 import CreatorNftImage from "@/components/CreatorNftImage";
 import { useToast } from "@/components/Toast";
+import { useCharacterGate } from "@/hooks/useCharacterGate";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
@@ -31,6 +32,7 @@ export default function MarketplacePage() {
   const [busy, setBusy]             = useState(false);
 
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const { requireCharacter } = useCharacterGate();
   const recordActivity = useMutation(api.world.recordActivity);
 
   const loadData = useCallback(async (addr: string | null) => {
@@ -59,21 +61,21 @@ export default function MarketplacePage() {
     init();
   }, [loadData]);
 
-  async function getWriteClient() {
-    const eth = (window as any).ethereum;
-    if (!eth) throw new Error("Install MetaMask to continue");
-    const accounts = await eth.request({ method: "eth_requestAccounts" });
-    setAddress(accounts[0]);
-    const wc = createWriteClient(accounts[0] as `0x${string}`);
+  async function getWriteClient(account: string) {
+    setAddress(account);
+    const wc = createWriteClient(account as `0x${string}`);
     await wc.connect("studionet").catch(() => {});
-    return { wc, addr: accounts[0] as string };
+    return { wc, addr: account };
   }
 
   async function handleMint() {
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setBusy(true);
     const tid = toastLoading("Minting Creator NFT…", "Registering on-chain — takes 1–3 min");
     try {
-      const { wc, addr } = await getWriteClient();
+      const { wc, addr } = await getWriteClient(gate.account);
       const txHash = await mintCreatorNft(wc);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);

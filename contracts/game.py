@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from genlayer import *
 
 MAX_CHAPTER_ATTEMPTS = 200
+MIN_ATTEMPTS_BEFORE_CLOSE = 10
 MAX_USER_ATTEMPTS    = 3
 MIN_PRICE            = u256(10 ** 18)        # 1 GEN in wei
+BPS_DENOMINATOR      = u256(10000)
 SCENARIO_GEN_FEE     = u256(10 * 10 ** 18)  # 10 GEN in wei
 MAX_CREATOR_NFTS     = u256(100)
 NFT_MINT_PRICE       = u256(5 * 10 ** 18)   # 5 GEN in wei
@@ -99,6 +101,22 @@ class ChainTales(gl.Contract):
 
     def _protocol_balance(self) -> u256:
         return self._state["protocol_balance"] if "protocol_balance" in self._state else u256(0)
+
+    def _difficulty_multiplier_bps(self, difficulty: u256) -> u256:
+        assert difficulty >= u256(1) and difficulty <= u256(20), "Difficulty must be 1-20"
+        if difficulty == u256(1):
+            return u256(10000)
+        if difficulty <= u256(7):
+            return u256(11000)
+        if difficulty <= u256(15):
+            return u256(13000)
+        return u256(15000)
+
+    @gl.public.view
+    def get_required_publish_deposit(self, base_prize: u256, difficulty: u256) -> u256:
+        assert base_prize > u256(0), "Base prize must be greater than 0"
+        multiplier_bps = self._difficulty_multiplier_bps(difficulty)
+        return base_prize * multiplier_bps // BPS_DENOMINATOR
 
     def _fomo_winner_dict(self, chapter_id: u256) -> dict:
         if chapter_id in self.fomo_winners:
@@ -245,13 +263,14 @@ class ChainTales(gl.Contract):
     def has_character(self, address: Address) -> bool:
         return str(address).lower() in self.characters
 
-    @gl.public.write
+    @gl.public.write.payable
     def create_chapter(
         self,
         title: str,
         scenario: str,
         win_condition: str,
         difficulty: u256,
+        base_prize: u256,
         price_per_attempt: u256,
     ) -> u256:
         caller = gl.message.sender_address
@@ -265,7 +284,10 @@ class ChainTales(gl.Contract):
             "Win condition cannot be blank or padded"
         assert len(win_condition) <= 300, "Win condition must be at most 300 chars"
         assert difficulty >= u256(1) and difficulty <= u256(20), "Difficulty must be 1–20"
+        assert base_prize > u256(0), "Base prize must be greater than 0"
         assert price_per_attempt >= MIN_PRICE, "Minimum price is 1 GEN (10^18 wei)"
+        required = base_prize * self._difficulty_multiplier_bps(difficulty) // BPS_DENOMINATOR
+        assert gl.message.value >= required, "Publish deposit is below required prize funding"
 
         chapter_id = self._chapter_count()
         self._state["chapter_count"] = chapter_id + u256(1)
@@ -277,13 +299,17 @@ class ChainTales(gl.Contract):
             price_per_attempt=price_per_attempt,
             attempt_count=u256(0), active=True,
         )
+        self.prize_pools[chapter_id] = gl.message.value
         return chapter_id
 
     @gl.public.write
     def close_chapter(self, chapter_id: u256) -> None:
         assert chapter_id in self.chapters, "Chapter does not exist"
-        assert self.chapters[chapter_id].creator == gl.message.sender_address, \
+        ch = self.chapters[chapter_id]
+        assert ch.creator == gl.message.sender_address, \
             "Only the creator can close this chapter"
+        assert int(ch.attempt_count) >= MIN_ATTEMPTS_BEFORE_CLOSE or int(ch.attempt_count) >= MAX_CHAPTER_ATTEMPTS, \
+            "Chapter cannot be closed until it has at least 10 attempts"
         self.chapters[chapter_id].active = False
 
         # No winner → prize pool goes to protocol

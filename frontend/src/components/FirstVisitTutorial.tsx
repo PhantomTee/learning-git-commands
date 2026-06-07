@@ -19,12 +19,12 @@ const steps = [
   {
     kicker: "Creators",
     title: "Creator NFTs unlock chapter writing",
-    body: "Mint or buy a Creator NFT in the marketplace, then publish chapters with a scenario, win condition, difficulty, and action price.",
+    body: "Mint or buy a Creator NFT, then publish chapters with a scenario, win condition, difficulty-scaled prize deposit, and action price.",
   },
   {
     kicker: "Explorers",
-    title: "Win the FOMO prize pool",
-    body: "Each action pays GEN. Sixty percent enters the prize pool, and the last successful explorer before close can claim it.",
+    title: "Become the current leader",
+    body: "A successful action makes you the current leader, not the final winner yet. Hold the lead until the chapter closes to claim the pool.",
   },
 ];
 

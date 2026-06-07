@@ -6,6 +6,7 @@ import {
   getCreatorBalance,
   getClaimablePrizes,
   getChapters,
+  getAttempts,
   getCreatorNft,
   createCharacter,
   claimPrize,
@@ -18,18 +19,35 @@ import {
   Character,
   ClaimablePrize,
   Chapter,
+  Attempt,
 } from "@/lib/genlayer";
 import CharacterSheet from "@/components/CharacterSheet";
 import { useToast } from "@/components/Toast";
+import { useCharacterGate } from "@/hooks/useCharacterGate";
 import Link from "next/link";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+
+interface ActiveLead {
+  chapter: Chapter;
+  roll: number;
+  attemptIndex: number;
+}
+
+interface RecentAttempt extends Attempt {
+  chapter_id: number;
+  chapter_title: string;
+  chapter_active: boolean;
+  attempt_index: number;
+}
 
 export default function CharacterPage() {
   const [address, setAddress] = useState<string | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
   const [creatorBalance, setCreatorBalance] = useState<number>(0);
   const [claimablePrizes, setClaimablePrizes] = useState<ClaimablePrize[]>([]);
+  const [activeLeads, setActiveLeads] = useState<ActiveLead[]>([]);
+  const [recentAttempts, setRecentAttempts] = useState<RecentAttempt[]>([]);
   const [createdChapters, setCreatedChapters] = useState<Chapter[]>([]);
   const [creatorNftId, setCreatorNftId]       = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -38,6 +56,7 @@ export default function CharacterPage() {
 
   const [form, setForm] = useState({ name: "", gender: "male", age: 25 });
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const { requireCharacter } = useCharacterGate();
   const recordActivity = useMutation(api.world.recordActivity);
 
   useEffect(() => {
@@ -67,13 +86,45 @@ export default function CharacterPage() {
       const [creatorBal, prizes, allChapters, nftId] = await Promise.all([
         getCreatorBalance(addr),
         getClaimablePrizes(addr),
-        getChapters(0, 100),
+        getChapters(0, 50),
         getCreatorNft(addr),
       ]);
       setCreatorBalance(Number(creatorBal));
       setClaimablePrizes(prizes);
       setCreatedChapters(allChapters.filter((c) => c.creator.toLowerCase() === addr.toLowerCase()));
+      setActiveLeads(
+        allChapters
+          .filter((c) => c.active && c.fomo_winner.explorer.toLowerCase() === addr.toLowerCase())
+          .map((chapter) => ({
+            chapter,
+            roll: chapter.fomo_winner.roll,
+            attemptIndex: chapter.fomo_winner.attempt_index,
+          }))
+      );
       setCreatorNftId(nftId);
+
+      const attemptsByChapter = await Promise.all(
+        allChapters
+          .filter((chapter) => chapter.attempt_count > 0)
+          .map(async (chapter) => {
+            const offset = Math.max(0, chapter.attempt_count - 50);
+            const attempts = await getAttempts(chapter.id, offset, 50).catch(() => []);
+            return attempts.map((attempt, index) => ({
+              ...attempt,
+              chapter_id: chapter.id,
+              chapter_title: chapter.title,
+              chapter_active: chapter.active,
+              attempt_index: offset + index,
+            }));
+          })
+      );
+      setRecentAttempts(
+        attemptsByChapter
+          .flat()
+          .filter((attempt) => attempt.explorer.toLowerCase() === addr.toLowerCase())
+          .sort((a, b) => b.chapter_id - a.chapter_id || b.attempt_index - a.attempt_index)
+          .slice(0, 8)
+      );
     } catch { /* ignore */ }
   }
 
@@ -120,12 +171,13 @@ export default function CharacterPage() {
   }
 
   async function handleClaimPrize(chapterId: number) {
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setStatus("pending");
-    const tid = toastLoading("Claiming prize…", "Finalising your victory on-chain");
+    const tid = toastLoading("Claiming final pool…", "Claiming is only possible after the chapter has closed");
     try {
-      const eth = (window as any).ethereum;
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      const writeClient = createWriteClient(gate.account as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await claimPrize(writeClient, chapterId);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
@@ -133,16 +185,16 @@ export default function CharacterPage() {
       const prize = claimablePrizes.find((item) => item.chapter_id === chapterId);
       await recordActivity({
         type: "prize_claimed",
-        actor: accounts[0],
+        actor: gate.account,
         chapter_id: chapterId,
         chapter_title: prize?.title,
         amount_wei: prize ? String(prize.prize_pool) : undefined,
         tx_hash: txHash,
-        message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} claimed the prize${prize?.title ? ` for ${prize.title}` : ""}.`,
+        message: `${gate.account.slice(0, 6)}...${gate.account.slice(-4)} claimed the final pool${prize?.title ? ` for ${prize.title}` : ""}.`,
       }).catch(() => {});
       dismiss(tid);
-      success("Prize claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
-      await loadData(accounts[0]);
+      success("Final pool claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
+      await loadData(gate.account);
       setStatus("idle");
     } catch (err: any) {
       dismiss(tid);
@@ -152,19 +204,20 @@ export default function CharacterPage() {
   }
 
   async function handleWithdrawCreator() {
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
+
     setStatus("pending");
     const tid = toastLoading("Withdrawing earnings…", "Transferring your 30% cut");
     try {
-      const eth = (window as any).ethereum;
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      const writeClient = createWriteClient(gate.account as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       const txHash = await withdrawCreator(writeClient);
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
       dismiss(tid);
       success("Withdrawn!", "Your creator earnings are in your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
-      await loadData(accounts[0]);
+      await loadData(gate.account);
       setStatus("idle");
     } catch (err: any) {
       dismiss(tid);
@@ -256,31 +309,117 @@ export default function CharacterPage() {
             </div>
           )}
 
-          {/* ── Claimable prizes notification ── */}
-          {claimablePrizes.length > 0 && (
+          {/* ── Active leads ── */}
+          <div className="space-y-2">
+            <p className="font-display text-xs text-amber-400 tracking-widest uppercase flex items-center gap-2">
+              Your Active Leads
+            </p>
+            {activeLeads.length > 0 ? (
+              <div className="space-y-2">
+                {activeLeads.map(({ chapter, roll, attemptIndex }) => (
+                  <Link
+                    key={chapter.id}
+                    href={`/chapter/${chapter.id}`}
+                    className="panel panel-hover p-4 block space-y-3"
+                    style={{ border: "1px solid rgba(245,158,11,0.36)", background: "rgba(245,158,11,0.05)" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-display text-sm text-amber-300 truncate">{chapter.title}</p>
+                        <p className="text-xs text-amber-200/60 mt-1">
+                          You are leading. Hold this position until the chapter closes.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-display text-sm text-amber-300">{formatGEN(chapter.prize_pool)}</p>
+                        <p className="text-xs text-amber-900/60">Prize pool</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-amber-200/55 font-display">
+                      <span>Roll {roll}</span>
+                      <span>Attempt #{attemptIndex + 1}</span>
+                      <span>{chapter.attempt_count} total attempts</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="panel p-4 text-sm text-amber-200/55"
+                style={{ border: "1px solid rgba(245,158,11,0.16)", background: "rgba(245,158,11,0.03)" }}>
+                You are not leading any active chapters yet.
+              </div>
+            )}
+          </div>
+
+          {/* ── Claimable final pools notification ── */}
+          <div className="space-y-2">
+            <p className="font-display text-xs text-amber-400 tracking-widest uppercase flex items-center gap-2">
+              Claimable Final Pools
+            </p>
+            {claimablePrizes.length > 0 ? (
+              <div className="space-y-2">
+                {claimablePrizes.map((prize) => (
+                  <div key={prize.chapter_id} className="panel p-4 flex items-center justify-between gap-3"
+                    style={{ border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
+                    <div className="min-w-0">
+                      <p className="font-display text-sm text-amber-300 truncate">{prize.title}</p>
+                      <p className="text-xs text-amber-900/60">
+                        Claimable after chapter close: <span className="text-amber-400 font-bold">{formatGEN(prize.prize_pool)}</span>
+                        {" · "}rolled {prize.roll}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleClaimPrize(prize.chapter_id)}
+                      disabled={status === "pending"}
+                      className="btn-gold px-4 py-2 rounded-lg text-xs shrink-0"
+                    >
+                      {status === "pending" ? "…" : "Claim Final Pool"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="panel p-4 text-sm text-amber-200/55"
+                style={{ border: "1px solid rgba(245,158,11,0.16)", background: "rgba(245,158,11,0.03)" }}>
+                No closed chapter pools are claimable yet.
+              </div>
+            )}
+          </div>
+
+          {/* ── Recent attempts ── */}
+          {recentAttempts.length > 0 && (
             <div className="space-y-2">
               <p className="font-display text-xs text-amber-400 tracking-widest uppercase flex items-center gap-2">
-                You have prizes to claim!
+                Your Recent Attempts
               </p>
-              {claimablePrizes.map((prize) => (
-                <div key={prize.chapter_id} className="panel p-4 flex items-center justify-between gap-3"
-                  style={{ border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
-                  <div className="min-w-0">
-                    <p className="font-display text-sm text-amber-300 truncate">{prize.title}</p>
-                    <p className="text-xs text-amber-900/60">
-                      Prize pool: <span className="text-amber-400 font-bold">{formatGEN(prize.prize_pool)}</span>
-                      {" · "}rolled {prize.roll}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleClaimPrize(prize.chapter_id)}
-                    disabled={status === "pending"}
-                    className="btn-gold px-4 py-2 rounded-lg text-xs shrink-0"
+              <div className="space-y-2">
+                {recentAttempts.map((attempt) => (
+                  <Link
+                    key={`${attempt.chapter_id}:${attempt.attempt_index}`}
+                    href={`/chapter/${attempt.chapter_id}`}
+                    className="panel panel-hover p-4 block"
+                    style={attempt.success
+                      ? { border: "1px solid rgba(74,222,128,0.28)", background: "rgba(74,222,128,0.03)" }
+                      : { border: "1px solid rgba(245,158,11,0.14)" }}
                   >
-                    {status === "pending" ? "…" : "Claim"}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-display text-sm text-amber-300 truncate">{attempt.chapter_title}</p>
+                        <p className="text-xs text-amber-200/55 mt-1 line-clamp-2">{attempt.action}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={attempt.success ? "font-display text-sm text-green-400" : "font-display text-sm text-red-300"}>
+                          {attempt.success ? "Led" : "Fell short"}
+                        </p>
+                        <p className="text-xs text-amber-900/60">Roll {attempt.roll}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-amber-900/60 mt-2">
+                      {attempt.chapter_active ? "Active chapter" : "Closed chapter"} · Attempt #{attempt.attempt_index + 1}
+                    </p>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

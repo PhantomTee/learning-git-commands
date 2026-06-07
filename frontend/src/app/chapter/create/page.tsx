@@ -2,9 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createWriteClient, createChapter, generateScenario, waitForResult, readLeaderResult, genToWei, explorerTxUrl, normaliseError, GeneratedScenario } from "@/lib/genlayer";
+import {
+  createWriteClient,
+  createChapter,
+  generateScenario,
+  waitForResult,
+  readLeaderResult,
+  genToWei,
+  explorerTxUrl,
+  normaliseError,
+  GeneratedScenario,
+  DEFAULT_BASE_PRIZE_GEN,
+  difficultyMultiplierBps,
+  getRequiredPublishDepositLocal,
+  formatGEN,
+} from "@/lib/genlayer";
 import { revalidateHome } from "@/app/actions";
 import { useToast } from "@/components/Toast";
+import { useCharacterGate } from "@/hooks/useCharacterGate";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 
@@ -49,6 +64,7 @@ export default function CreateChapterPage() {
     scenario: "",
     win_condition: "",
     difficulty: 10,
+    base_prize_gen: DEFAULT_BASE_PRIZE_GEN,
     price_gen: 1,
   });
   const [status, setStatus] = useState<"idle" | "pending" | "done">("idle");
@@ -58,7 +74,13 @@ export default function CreateChapterPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: toastError, loading: toastLoading, update: toastUpdate, dismiss } = useToast();
+  const { requireCharacter } = useCharacterGate();
   const recordActivity = useMutation(api.world.recordActivity);
+  const safeBasePrizeGen = Number.isFinite(form.base_prize_gen) ? form.base_prize_gen : 0;
+  const basePrizeWei = genToWei(safeBasePrizeGen);
+  const requiredPublishDepositWei = getRequiredPublishDepositLocal(basePrizeWei, form.difficulty);
+  const multiplierBps = difficultyMultiplierBps(form.difficulty);
+  const multiplierLabel = `${(multiplierBps / 10000).toFixed(1)}x`;
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -80,15 +102,14 @@ export default function CreateChapterPage() {
   }
 
   async function handleGenerate() {
-    const eth = (window as any).ethereum;
-    if (!eth) return toastError("No wallet", "Install MetaMask to use scenario generation");
+    const gate = await requireCharacter();
+    if (!gate.ok) return;
 
     setGenerating(true);
     setPendingTxHash(null);
     const tid = toastLoading("Consulting the oracle…", "Paying 10 GEN · AI generating on-chain — takes ~1 min");
     try {
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      const writeClient = createWriteClient(gate.account as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
       let txHash = "";
       const gen = await generateScenario(writeClient, (hash) => {
@@ -113,16 +134,25 @@ export default function CreateChapterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const eth = (window as any).ethereum;
-    if (!eth) return setError("Install MetaMask to create a chapter");
+    if (safeBasePrizeGen <= 0) {
+      const msg = "Base prize must be greater than 0 GEN.";
+      setError(msg);
+      toastError("Base prize required", msg);
+      return;
+    }
+
+    const gate = await requireCharacter();
+    if (!gate.ok) {
+      setError(gate.message);
+      return;
+    }
 
     setStatus("pending");
     setError(null);
     const tid = toastLoading("Publishing chapter…", "Validators writing to the chain — takes 1–3 min");
 
     try {
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const writeClient = createWriteClient(accounts[0] as `0x${string}`);
+      const writeClient = createWriteClient(gate.account as `0x${string}`);
       await writeClient.connect("studionet").catch(() => {});
 
       const txHash = await createChapter(
@@ -131,7 +161,9 @@ export default function CreateChapterPage() {
         form.scenario,
         form.win_condition,
         form.difficulty,
-        genToWei(form.price_gen)
+        basePrizeWei,
+        genToWei(form.price_gen),
+        requiredPublishDepositWei
       );
       toastUpdate(tid, { link: { href: explorerTxUrl(txHash), label: "View transaction" } });
       await waitForResult(txHash);
@@ -144,11 +176,11 @@ export default function CreateChapterPage() {
       }
       await recordActivity({
         type: "chapter_created",
-        actor: accounts[0],
+        actor: gate.account,
         chapter_id: chapterId,
         chapter_title: form.title,
         tx_hash: txHash,
-        message: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} published ${form.title}.`,
+        message: `${gate.account.slice(0, 6)}...${gate.account.slice(-4)} published ${form.title}.`,
       }).catch(() => {});
       await revalidateHome();
       dismiss(tid);
@@ -321,6 +353,42 @@ export default function CreateChapterPage() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-300">Base Prize</label>
+            <span className="text-sm font-semibold text-amber-400">{safeBasePrizeGen} GEN</span>
+          </div>
+          <p className="text-xs text-gray-500">
+            This deposit enters the chapter prize pool and cannot be reclaimed.
+          </p>
+          <input
+            type="number"
+            min={0.01}
+            step={1}
+            value={form.base_prize_gen}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              update("base_prize_gen", Number.isFinite(next) ? Math.max(0, next) : 0);
+            }}
+            className="w-full bg-gray-900 border border-gray-700 focus:border-amber-500 rounded-lg px-4 py-2.5 text-sm outline-none transition-colors"
+          />
+          <div className="p-3 rounded-lg text-xs space-y-1"
+            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+            <div className="flex justify-between text-amber-200/60">
+              <span>Suggested starting base prize</span>
+              <span className="text-amber-400">{DEFAULT_BASE_PRIZE_GEN} GEN</span>
+            </div>
+            <div className="flex justify-between text-amber-200/60">
+              <span>Difficulty multiplier</span>
+              <span className="text-amber-400">{multiplierLabel}</span>
+            </div>
+            <div className="flex justify-between text-amber-200/80 font-display">
+              <span>Required publish deposit</span>
+              <span className="text-amber-300">{formatGEN(requiredPublishDepositWei)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-300">Price per Attempt</label>
             <span className="text-sm font-semibold text-amber-400">{form.price_gen} GEN</span>
           </div>
@@ -360,10 +428,10 @@ export default function CreateChapterPage() {
 
         <button
           type="submit"
-          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition}
+          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition || safeBasePrizeGen <= 0}
           className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors"
         >
-          {status === "pending" ? "Writing to Genlayer…" : "Publish Chapter"}
+          {status === "pending" ? "Writing to Genlayer…" : `Publish Chapter · ${formatGEN(requiredPublishDepositWei)}`}
         </button>
       </form>
     </div>

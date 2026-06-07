@@ -20,6 +20,7 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
   const winner = hasWinner(chapter);
   const fw     = chapter.fomo_winner;
   const dc     = difficultyColor(chapter.difficulty);
+  const leaderLabel = chapter.active ? "Current Leader" : "Final Winner";
 
   return (
     <Link href={`/chapter/${chapter.id}`}>
@@ -58,7 +59,7 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
           {winner && (
             <div className="flex items-center gap-2 p-2 rounded-lg text-xs"
               style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
-              <span className="text-amber-400 font-display">FOMO Leader:</span>
+              <span className="text-amber-400 font-display">{leaderLabel}:</span>
               <span className="font-mono text-amber-200">{fw.explorer.slice(0, 6)}…{fw.explorer.slice(-4)}</span>
               <span className="text-amber-500/80 ml-auto">d{fw.roll}</span>
             </div>
