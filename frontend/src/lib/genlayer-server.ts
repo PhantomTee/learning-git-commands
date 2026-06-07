@@ -2,7 +2,7 @@
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 
-export const CONTRACT_ADDRESS = "0xfAc3797967721f48bb2ab966bbB498C5aa4C6e75" as `0x${string}`;
+export const CONTRACT_ADDRESS = "0x53f68c3B0a3e67ddB68eFC35E237cD4b37645954" as `0x${string}`;
 
 export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
