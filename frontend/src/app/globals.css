@@ -4,7 +4,7 @@
 @theme inline {
   --font-display: var(--font-vt323), monospace;
   --font-body: var(--font-vt323), monospace;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
   --color-stone:        #0d0a0e;
   --color-stone-light:  #1a1218;
@@ -32,6 +32,9 @@ body {
   letter-spacing: 0;
   image-rendering: pixelated;
   text-rendering: geometricPrecision;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.85);
 }
 
 /* Lightweight dungeon-grid + scanline field */
@@ -75,6 +78,25 @@ main, footer { position: relative; z-index: 1; }
 /* ── Pixel RPG primitives ───────────────────────────────────────────────── */
 .pixel-frame {
   image-rendering: pixelated;
+}
+
+.font-display,
+h1,
+h2,
+h3,
+button,
+.btn-gold,
+.btn-stone,
+.pixel-button {
+  text-shadow: 2px 2px 0 #000;
+}
+
+p,
+span,
+label,
+textarea,
+input {
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.75);
 }
 
 .pixel-shadow {
