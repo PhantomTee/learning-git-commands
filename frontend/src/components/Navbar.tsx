@@ -23,8 +23,7 @@ export default function Navbar() {
   const [switching, setSwitching]   = useState(false);
   const [creatorNftId, setCreatorNftId] = useState(0);
   const { info, error: toastErr } = useToast();
-  const { count: notifCount, items: notifItems, markAllRead } = useNotifications(address);
-  const notifTitle = notifCount > 0 ? notifItems[0]?.message ?? `${notifCount} new updates` : "No new notifications";
+  const { count: notifCount } = useNotifications(address);
 
   const loadCreatorNft = useCallback(async (addr: string) => {
     try { setCreatorNftId(await getCreatorNft(addr)); }
@@ -192,28 +191,20 @@ export default function Navbar() {
               { href: "/chapter/create",label: "Create Chapter" },
               { href: "/leaderboard",   label: "Leaderboard"   },
               { href: "/character",     label: "My Character"  },
+              { href: "/notifications", label: "Notifications" },
               ...(creatorNftId > 0 ? [{ href: `/marketplace/${creatorNftId}`, label: "My NFT" }] : []),
             ].map(({ href, label }) => (
               <Link key={href} href={href}
-                className="text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
+                title={href === "/notifications" && notifCount > 0 ? `${notifCount} unread notifications` : undefined}
+                className="relative text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
                 {label}
-              </Link>
-            ))}
-
-            {address && (
-              <button
-                onClick={markAllRead}
-                title={notifTitle}
-                className="relative text-amber-200/60 hover:text-amber-300 transition-colors px-2 py-1 rounded text-xs font-display tracking-wider"
-              >
-                Notifs
-                {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {href === "/notifications" && notifCount > 0 && (
+                  <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {notifCount > 9 ? "9+" : notifCount}
                   </span>
                 )}
-              </button>
-            )}
+              </Link>
+            ))}
 
             {address ? (
               <WalletBadge />
@@ -273,25 +264,20 @@ export default function Navbar() {
             { href: "/chapter/create", label: "Create Chapter" },
             { href: "/leaderboard",    label: "Leaderboard"    },
             { href: "/character",      label: "My Character"   },
+            { href: "/notifications",  label: "Notifications"  },
             ...(creatorNftId > 0 ? [{ href: `/marketplace/${creatorNftId}`, label: "My Creator NFT" }] : []),
           ].map(({ href, label }) => (
             <Link key={href} href={href} onClick={close}
-              className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"
+              className="w-full max-w-xs flex items-center justify-between gap-4 px-6 py-4 rounded-xl font-display tracking-widest uppercase text-sm text-amber-300 hover:text-amber-200 transition-colors"
               style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.04)" }}>
-              {label}
+              <span>{label}</span>
+              {href === "/notifications" && notifCount > 0 && (
+                <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {notifCount > 9 ? "9+" : notifCount}
+                </span>
+              )}
             </Link>
           ))}
-
-          {address && notifCount > 0 && (
-            <button
-              onClick={() => { markAllRead(); close(); }}
-              className="w-full max-w-xs flex items-center justify-between px-6 py-3 rounded-xl font-display text-sm mt-2"
-              style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)", color: "#f87171" }}
-            >
-              <span>{notifItems[0]?.message ?? `${notifCount} new updates`}</span>
-              <span className="text-xs opacity-60">Dismiss</span>
-            </button>
-          )}
 
           {!address ? (
             <button onClick={connect}

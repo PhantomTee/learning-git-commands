@@ -7,6 +7,7 @@ MAX_CHAPTER_ATTEMPTS = 200
 MIN_ATTEMPTS_BEFORE_CLOSE = 10
 MAX_USER_ATTEMPTS    = 3
 MIN_PRICE            = u256(10 ** 18)        # 1 GEN in wei
+MIN_BASE_PRIZE       = u256(10 * 10 ** 18)  # 10 GEN in wei
 BPS_DENOMINATOR      = u256(10000)
 SCENARIO_GEN_FEE     = u256(10 * 10 ** 18)  # 10 GEN in wei
 MAX_CREATOR_NFTS     = u256(100)
@@ -114,7 +115,7 @@ class ChainTales(gl.Contract):
 
     @gl.public.view
     def get_required_publish_deposit(self, base_prize: u256, difficulty: u256) -> u256:
-        assert base_prize > u256(0), "Base prize must be greater than 0"
+        assert base_prize >= MIN_BASE_PRIZE, "Base prize must be at least 10 GEN"
         multiplier_bps = self._difficulty_multiplier_bps(difficulty)
         return base_prize * multiplier_bps // BPS_DENOMINATOR
 
@@ -284,7 +285,7 @@ class ChainTales(gl.Contract):
             "Win condition cannot be blank or padded"
         assert len(win_condition) <= 300, "Win condition must be at most 300 chars"
         assert difficulty >= u256(1) and difficulty <= u256(20), "Difficulty must be 1–20"
-        assert base_prize > u256(0), "Base prize must be greater than 0"
+        assert base_prize >= MIN_BASE_PRIZE, "Base prize must be at least 10 GEN"
         assert price_per_attempt >= MIN_PRICE, "Minimum price is 1 GEN (10^18 wei)"
         required = base_prize * self._difficulty_multiplier_bps(difficulty) // BPS_DENOMINATOR
         assert gl.message.value >= required, "Publish deposit is below required prize funding"

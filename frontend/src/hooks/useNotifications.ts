@@ -11,6 +11,7 @@ export interface NotifItem {
   chapterId?: number;
   title: string;
   message: string;
+  unread: boolean;
 }
 
 type InboxActivity = {
@@ -21,6 +22,7 @@ type InboxActivity = {
 };
 
 function getSeenIds(): string[] {
+  if (typeof window === "undefined") return [];
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(value) ? value : [];
@@ -29,6 +31,7 @@ function getSeenIds(): string[] {
 }
 
 function saveSeenIds(ids: string[]) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
 }
 
@@ -43,14 +46,16 @@ export function useNotifications(address: string | null) {
     if (!inbox) return [];
     const seenSet = new Set(seen);
     return inbox
-      .filter((item) => !seenSet.has(item._id))
       .map((item) => ({
         id: item._id,
         chapterId: item.chapter_id,
         title: item.chapter_title ?? "ChainTales",
         message: item.message,
+        unread: !seenSet.has(item._id),
       }));
   }, [inbox, seen]);
+
+  const count = useMemo(() => items.filter((item) => item.unread).length, [items]);
 
   const markAllRead = useCallback(() => {
     if (!inbox) return;
@@ -59,5 +64,5 @@ export function useNotifications(address: string | null) {
     setSeen(ids);
   }, [inbox]);
 
-  return { count: items.length, items, markAllRead };
+  return { count, items, markAllRead };
 }

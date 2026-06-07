@@ -2,13 +2,13 @@
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 
-export const CONTRACT_ADDRESS = "0x53f68c3B0a3e67ddB68eFC35E237cD4b37645954" as `0x${string}`;
+export const CONTRACT_ADDRESS = "0x0Bd682cB2Df8A54AA31f359129878084275Fc233" as `0x${string}`;
 
 export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const explorerTxUrl = (hash: string) => `${EXPLORER_URL}/tx/${hash}`;
 
 export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-export const DEFAULT_BASE_PRIZE_GEN = 100;
+export const DEFAULT_BASE_PRIZE_GEN = 10;
 export const BPS_DENOMINATOR = 10000;
 
 export function formatGEN(wei: number | bigint): string {

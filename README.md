@@ -218,7 +218,7 @@ Publish deposits use a creator-chosen base prize multiplied by chapter difficult
 | 8–15 | 1.3x |
 | 16–20 | 1.5x |
 
-Example: a 100 GEN base prize requires 100 GEN at difficulty 1, 110 GEN at difficulty 2–7, 130 GEN at difficulty 8–15, and 150 GEN at difficulty 16–20.
+Minimum example: a 10 GEN base prize requires 10 GEN at difficulty 1, 11 GEN at difficulty 2–7, 13 GEN at difficulty 8–15, and 15 GEN at difficulty 16–20.
 
 ---
 

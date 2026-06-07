@@ -25,6 +25,7 @@ import { api } from "../../../../convex/_generated/api";
 
 const HISTORY_KEY = "scenario_history";
 const MAX_HISTORY = 10;
+const MIN_BASE_PRIZE_GEN = 10;
 
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Trivial", 4: "Easy", 8: "Medium", 12: "Hard", 16: "Deadly", 20: "Legendary",
@@ -134,10 +135,10 @@ export default function CreateChapterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (safeBasePrizeGen <= 0) {
-      const msg = "Base prize must be greater than 0 GEN.";
+    if (safeBasePrizeGen < MIN_BASE_PRIZE_GEN) {
+      const msg = "Base prize must be at least 10 GEN.";
       setError(msg);
-      toastError("Base prize required", msg);
+      toastError("Base prize too low", msg);
       return;
     }
 
@@ -357,11 +358,11 @@ export default function CreateChapterPage() {
             <span className="text-sm font-semibold text-amber-400">{safeBasePrizeGen} GEN</span>
           </div>
           <p className="text-xs text-gray-500">
-            This deposit enters the chapter prize pool and cannot be reclaimed.
+            Minimum 10 GEN. This deposit enters the chapter prize pool and cannot be reclaimed.
           </p>
           <input
             type="number"
-            min={0.01}
+            min={MIN_BASE_PRIZE_GEN}
             step={1}
             value={form.base_prize_gen}
             onChange={(e) => {
@@ -373,7 +374,7 @@ export default function CreateChapterPage() {
           <div className="p-3 rounded-lg text-xs space-y-1"
             style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
             <div className="flex justify-between text-amber-200/60">
-              <span>Suggested starting base prize</span>
+              <span>Minimum base prize</span>
               <span className="text-amber-400">{DEFAULT_BASE_PRIZE_GEN} GEN</span>
             </div>
             <div className="flex justify-between text-amber-200/60">
@@ -428,7 +429,7 @@ export default function CreateChapterPage() {
 
         <button
           type="submit"
-          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition || safeBasePrizeGen <= 0}
+          disabled={status === "pending" || !form.title || !form.scenario || !form.win_condition || safeBasePrizeGen < MIN_BASE_PRIZE_GEN}
           className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors"
         >
           {status === "pending" ? "Writing to Genlayer…" : `Publish Chapter · ${formatGEN(requiredPublishDepositWei)}`}
