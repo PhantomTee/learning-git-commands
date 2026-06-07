@@ -42,7 +42,7 @@ export default function WorldMap({ chapters }: Props) {
   return (
     <div className="space-y-4">
       <div className="map-bg rounded-xl border border-amber-900/40 p-4 sm:p-6"
-        style={{ boxShadow: "inset 0 0 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.5)" }}>
+        style={{ borderWidth: 2, boxShadow: "5px 5px 0 rgba(0,0,0,0.82)" }}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -77,10 +77,10 @@ export default function WorldMap({ chapters }: Props) {
               return (
                 <Link key={ch.id} href={`/chapter/${ch.id}`}>
                   <div className="group relative panel panel-hover p-4 cursor-pointer"
-                    style={{ border: "1px solid rgba(245,158,11,0.3)" }}>
+                    style={{ border: "2px solid rgba(245,158,11,0.55)" }}>
 
                     <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-400 animate-pulse"
-                      style={{ boxShadow: "0 0 6px rgba(245,158,11,0.8)" }} />
+                      style={{ boxShadow: "2px 2px 0 #000" }} />
 
                     <div className="flex items-start gap-3 mb-2">
                       <div className="min-w-0">

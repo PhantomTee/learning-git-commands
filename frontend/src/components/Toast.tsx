@@ -73,24 +73,24 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
     <div
       onClick={() => leave()}
       style={{
-        background: "linear-gradient(135deg,#1f1520 0%,#150f18 100%)",
-        border: `1px solid ${cfg.border}`,
-        boxShadow: `0 0 24px ${cfg.glow}, 0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(245,158,11,0.06)`,
-        transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+        background: "#120d10",
+        border: `2px solid ${cfg.border}`,
+        boxShadow: "5px 5px 0 rgba(0,0,0,0.85)",
+        transition: "opacity 120ms steps(2), transform 120ms steps(2)",
         opacity: visible && !leaving ? 1 : 0,
-        transform: visible && !leaving ? "translateX(0) scale(1)" : "translateX(100%) scale(0.9)",
+        transform: visible && !leaving ? "translateX(0)" : "translateX(100%)",
         cursor: "pointer",
         width: "min(360px, calc(100vw - 2rem))",
       }}
-      className="rounded-xl p-4 select-none"
+      className="p-4 select-none pixel-frame"
     >
       {/* Top gold line */}
-      <div className="h-px mb-3 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${cfg.border}, transparent)` }} />
+      <div className="h-0.5 mb-3" style={{ background: `repeating-linear-gradient(90deg, transparent 0 8px, ${cfg.border} 8px 16px, transparent 16px 24px)` }} />
 
       <div className="flex items-start gap-3">
         {/* Icon */}
         <span className="text-xl shrink-0 mt-0.5"
-          style={{ filter: toast.type === "loading" ? undefined : `drop-shadow(0 0 6px ${cfg.border})` }}>
+          style={{ textShadow: toast.type === "loading" ? undefined : `2px 2px 0 rgba(0,0,0,0.9)` }}>
           {cfg.icon}
         </span>
 
@@ -129,9 +129,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
 
       {/* Loading pulse bar */}
       {toast.type === "loading" && (
-        <div className="mt-3 h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(245,158,11,0.1)" }}>
-          <div className="h-full rounded-full animate-pulse"
-            style={{ background: "linear-gradient(90deg,#d97706,#fcd34d,#d97706)", width: "60%",
+        <div className="mt-3 h-1 overflow-hidden" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+          <div className="h-full animate-pulse"
+            style={{ background: "repeating-linear-gradient(90deg,#d97706 0 8px,#fcd34d 8px 16px)", width: "60%",
               animation: "shimmer 1.5s infinite" }} />
         </div>
       )}

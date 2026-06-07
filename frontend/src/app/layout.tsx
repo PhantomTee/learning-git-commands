@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Cinzel, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "./providers";
 import Navbar from "@/components/Navbar";
 import StoneGate from "@/components/StoneGate";
 
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "900"],
+const vt323 = localFont({
+  variable: "--font-vt323",
+  src: "./fonts/vt323.woff2",
+  weight: "400",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -34,9 +36,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cinzel.variable} ${geistMono.variable} h-full`}
+      className={`${vt323.variable} ${geistMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-stone text-parchment font-body antialiased">
+      <body className="min-h-full flex flex-col bg-stone text-parchment font-body pixel-frame">
         <Providers>
           <StoneGate />
           <Navbar />
