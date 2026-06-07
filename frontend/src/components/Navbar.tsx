@@ -236,7 +236,7 @@ export default function Navbar() {
 
       {/* ── Full-screen mobile overlay ── */}
       <div
-        className={`fixed inset-0 z-[60] md:hidden flex flex-col transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[60] xl:hidden flex flex-col transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         style={{ background: "rgba(8,5,10,0.97)", backdropFilter: "blur(16px)" }}
