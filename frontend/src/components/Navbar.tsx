@@ -143,7 +143,7 @@ export default function Navbar() {
         <button
           onClick={switchNetwork}
           disabled={switching}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-800/60 hover:border-red-600 transition-colors text-xs font-display tracking-wider"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-800/60 hover:border-red-600 transition-colors text-xs font-display tracking-wider whitespace-nowrap"
           style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}
         >
           {switching ? "Switching…" : "Switch to Genlayer"}
@@ -155,7 +155,7 @@ export default function Navbar() {
         type="button"
         onClick={disconnect}
         title="Disconnect wallet"
-        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50 hover:border-amber-500/60 transition-colors"
+        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-amber-900/50 hover:border-amber-500/60 transition-colors whitespace-nowrap"
         style={{ background: "rgba(245,158,11,0.05)" }}
       >
         <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
@@ -175,16 +175,16 @@ export default function Navbar() {
       >
         <div className="h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="group" onClick={close}>
+          <Link href="/" className="group shrink-0" onClick={close}>
             <span className="font-display font-black text-lg sm:text-xl tracking-widest text-amber-400 group-hover:text-amber-300 transition-colors">
               CHAINTALES
             </span>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden xl:flex items-center gap-5 whitespace-nowrap">
             {[
               { href: "/",               label: "World Map"      },
               { href: "/marketplace",   label: "Marketplace"    },
@@ -196,7 +196,7 @@ export default function Navbar() {
             ].map(({ href, label }) => (
               <Link key={href} href={href}
                 title={href === "/notifications" && notifCount > 0 ? `${notifCount} unread notifications` : undefined}
-                className="relative text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
+                className="relative whitespace-nowrap text-amber-200/70 hover:text-amber-300 transition-colors uppercase text-xs tracking-widest font-display">
                 {label}
                 {href === "/notifications" && notifCount > 0 && (
                   <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
@@ -209,14 +209,14 @@ export default function Navbar() {
             {address ? (
               <WalletBadge />
             ) : (
-              <button onClick={connect} className="btn-gold px-4 py-1.5 rounded-lg text-xs">
+              <button onClick={connect} className="btn-gold px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">
                 Connect Wallet
               </button>
             )}
           </div>
 
           {/* Mobile: wallet chip + hamburger */}
-          <div className="flex md:hidden items-center gap-3">
+          <div className="flex xl:hidden items-center gap-3">
             {address && <WalletBadge />}
             <button
               onClick={() => setMenuOpen((o) => !o)}
