@@ -524,7 +524,7 @@ export default function CharacterPage() {
       )}
 
       <Link href="/" className="block text-center text-xs text-gray-500 hover:text-amber-400">
-        ← Back to World Map
+        ← Back to Live Map
       </Link>
     </div>
   );

@@ -212,7 +212,7 @@ export default function ChapterPage() {
     return (
       <div className="text-center py-24 space-y-3">
         <p className="text-amber-900/60 font-display">Chapter not found.</p>
-        <Link href="/" className="text-amber-400 hover:underline text-sm block">← Back to World Map</Link>
+        <Link href="/" className="text-amber-400 hover:underline text-sm block">← Back to Live Map</Link>
       </div>
     );
   }
@@ -234,7 +234,7 @@ export default function ChapterPage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Back */}
       <Link href="/" className="text-xs text-amber-900/60 hover:text-amber-400 font-display tracking-widest uppercase">
-        ← World Map
+        ← Live Map
       </Link>
 
       {/* Header */}
@@ -264,7 +264,7 @@ export default function ChapterPage() {
           </div>
           <div className="text-center">
             <div className="text-amber-400 font-bold text-base">{priceGEN}</div>
-            <div className="text-amber-900/60 uppercase tracking-widest">Per Action</div>
+            <div className="text-amber-900/60 uppercase tracking-widest">Attempt Fee</div>
           </div>
           {chapter.prize_pool > 0 && (
             <div className="text-center">
@@ -297,6 +297,52 @@ export default function ChapterPage() {
           A successful action does not close the chapter. It makes you the current leader. Other explorers can still attempt the chapter and replace you. When the chapter closes, the current leader can claim the prize pool.
         </p>
       </div>
+
+      {/* Action input */}
+      {chapter.active && !walletAddress && (
+        <div className="panel p-4 text-center"
+          style={{ border: "1px solid rgba(245,158,11,0.22)", background: "rgba(245,158,11,0.04)" }}>
+          <p className="font-display text-sm text-amber-300">Connect wallet to explore this chapter.</p>
+        </div>
+      )}
+
+      {chapter.active && walletAddress && hasChar === false && !isCreator && (
+        <div className="panel p-4 text-center space-y-3"
+          style={{ border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.04)" }}>
+          <p className="text-sm text-amber-200/70 font-display">
+            Create a character before exploring.
+          </p>
+          <Link href="/character" className="btn-gold inline-block px-4 py-2 rounded-lg text-xs">
+            Create Character
+          </Link>
+        </div>
+      )}
+
+      {chapter.active && isCreator && (
+        <div className="panel p-4 text-sm text-amber-200/60"
+          style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.03)" }}>
+          You created this chapter, so you cannot submit explorer actions here.
+        </div>
+      )}
+
+      {canExplore && (
+        <div className="space-y-3">
+          <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
+            <span className="gold-divider flex-1" />Submit Your Action<span className="gold-divider flex-1" />
+          </h2>
+          <p className="text-xs text-amber-900/60 text-center font-display">
+            Attempt Fee: {priceGEN} · Max 3 attempts per chapter
+          </p>
+          <ActionInput
+            chapterId={chapterId}
+            winCondition={chapter.win_condition}
+            priceGEN={priceGEN}
+            onSubmit={handleAction}
+            beforeSubmit={guardAction}
+            disabled={false}
+          />
+        </div>
+      )}
 
       {/* Prize pool banner */}
       {chapter.prize_pool > 0 && (
@@ -370,6 +416,9 @@ export default function ChapterPage() {
             <p className="text-xs text-amber-200/60 mt-1">
               This chapter can close after {MIN_ATTEMPTS_BEFORE_CLOSE} attempts.
             </p>
+            <p className="text-xs text-amber-200/60 mt-1">
+              10 attempts are required so explorers have time to challenge the current leader before the pool is finalized.
+            </p>
             <p className="text-xs text-amber-900/60">
               Attempts so far: {closeAttemptCount}/{MIN_ATTEMPTS_BEFORE_CLOSE}.
             </p>
@@ -390,57 +439,11 @@ export default function ChapterPage() {
         </div>
       )}
 
-      {/* Action input */}
-      {chapter.active && !walletAddress && (
-        <div className="panel p-4 text-center"
-          style={{ border: "1px solid rgba(245,158,11,0.22)", background: "rgba(245,158,11,0.04)" }}>
-          <p className="font-display text-sm text-amber-300">Connect wallet to explore this chapter.</p>
-        </div>
-      )}
-
-      {chapter.active && walletAddress && hasChar === false && !isCreator && (
-        <div className="panel p-4 text-center space-y-3"
-          style={{ border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.04)" }}>
-          <p className="text-sm text-amber-200/70 font-display">
-            Create a character before exploring.
-          </p>
-          <Link href="/character" className="btn-gold inline-block px-4 py-2 rounded-lg text-xs">
-            Create Character
-          </Link>
-        </div>
-      )}
-
-      {chapter.active && isCreator && (
-        <div className="panel p-4 text-sm text-amber-200/60"
-          style={{ border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.03)" }}>
-          You created this chapter, so you cannot submit explorer actions here.
-        </div>
-      )}
-
-      {canExplore && (
-        <div className="space-y-3">
-          <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
-            <span className="gold-divider flex-1" />Submit Your Action<span className="gold-divider flex-1" />
-          </h2>
-          <p className="text-xs text-amber-900/60 text-center font-display">
-            Explorer action price: {priceGEN} · Max 3 attempts per chapter
-          </p>
-          <ActionInput
-            chapterId={chapterId}
-            winCondition={chapter.win_condition}
-            priceGEN={priceGEN}
-            onSubmit={handleAction}
-            beforeSubmit={guardAction}
-            disabled={false}
-          />
-        </div>
-      )}
-
       {/* Attempt feed */}
       {attempts.length > 0 && (
         <div className="space-y-3">
           <h2 className="font-display text-xs text-amber-900/60 tracking-widest uppercase flex items-center gap-3">
-            <span className="gold-divider flex-1" />Chronicle ({attempts.length})<span className="gold-divider flex-1" />
+            <span className="gold-divider flex-1" />Battle Chronicle ({attempts.length})<span className="gold-divider flex-1" />
           </h2>
           <div className="space-y-3">
             {[...attempts].reverse().map((att, i) => (

@@ -61,13 +61,11 @@ export default async function HomePage() {
 
       <div className="gold-divider" />
 
-      <RecentActivityFeed />
-
-      {/* ── World Map ── */}
+      {/* ── Live Map ── */}
       <section className="space-y-4">
         <h2 className="font-display font-bold text-amber-400 tracking-widest uppercase text-sm flex items-center gap-3">
           <span className="gold-divider flex-1" />
-          World Map
+          Live Map
           <span className="gold-divider flex-1" />
         </h2>
         <WorldMap chapters={chapters} />
@@ -88,6 +86,8 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <RecentActivityFeed />
 
       {chapters.length === 0 && (
         <div className="panel text-center py-16 px-6 space-y-4">

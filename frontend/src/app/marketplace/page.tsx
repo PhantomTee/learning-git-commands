@@ -295,7 +295,7 @@ export default function MarketplacePage() {
       )}
 
       <Link href="/" className="block text-center text-xs text-amber-200/55 hover:text-amber-400 font-display tracking-widest">
-        ← World Map
+        ← Live Map
       </Link>
     </div>
   );

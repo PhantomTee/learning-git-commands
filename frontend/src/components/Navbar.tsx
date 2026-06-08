@@ -184,9 +184,9 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden xl:flex items-center gap-5 whitespace-nowrap">
+          <div className="hidden 2xl:flex items-center gap-5 whitespace-nowrap">
             {[
-              { href: "/",               label: "World Map"      },
+              { href: "/",               label: "Live Map"       },
               { href: "/marketplace",   label: "Marketplace"    },
               { href: "/chapter/create",label: "Create Chapter" },
               { href: "/leaderboard",   label: "Leaderboard"   },
@@ -216,7 +216,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile: wallet chip + hamburger */}
-          <div className="flex xl:hidden items-center gap-3">
+          <div className="flex 2xl:hidden items-center gap-3">
             {address && <WalletBadge />}
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -236,7 +236,7 @@ export default function Navbar() {
 
       {/* ── Full-screen mobile overlay ── */}
       <div
-        className={`fixed inset-0 z-[60] xl:hidden flex flex-col transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[60] 2xl:hidden flex flex-col transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         style={{ background: "rgba(8,5,10,0.97)", backdropFilter: "blur(16px)" }}
@@ -259,7 +259,7 @@ export default function Navbar() {
           <p className="font-display text-xs tracking-[0.3em] text-amber-900/60 uppercase mb-4">Navigation</p>
 
           {[
-            { href: "/",               label: "World Map"      },
+            { href: "/",               label: "Live Map"       },
             { href: "/marketplace",    label: "Marketplace"    },
             { href: "/chapter/create", label: "Create Chapter" },
             { href: "/leaderboard",    label: "Leaderboard"    },

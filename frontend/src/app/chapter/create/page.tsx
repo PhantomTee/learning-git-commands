@@ -204,8 +204,7 @@ export default function CreateChapterPage() {
         <div>
           <h1 className="text-2xl font-bold text-amber-400">Create a Chapter</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Write a scenario and win condition. Explorers submit actions —
-            the on-chain AI dungeon master judges every attempt.
+            Lock a base prize, set the explorer attempt fee, and publish a challenge.
           </p>
         </div>
         <button
@@ -358,7 +357,7 @@ export default function CreateChapterPage() {
             <span className="text-sm font-semibold text-amber-400">{safeBasePrizeGen} GEN</span>
           </div>
           <p className="text-xs text-gray-500">
-            Minimum 10 GEN. This deposit enters the chapter prize pool and cannot be reclaimed.
+            This is the amount you lock into the chapter pool. Difficulty increases the required publish deposit.
           </p>
           <input
             type="number"
@@ -385,16 +384,19 @@ export default function CreateChapterPage() {
               <span>Required publish deposit</span>
               <span className="text-amber-300">{formatGEN(requiredPublishDepositWei)}</span>
             </div>
+            <p className="text-amber-200/55 pt-1">
+              Your publish deposit goes 100% into the prize pool. Later explorer attempts split 60% pool, 30% creator, 10% protocol.
+            </p>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-300">Price per Attempt</label>
+            <label className="text-sm font-medium text-gray-300">Attempt Fee</label>
             <span className="text-sm font-semibold text-amber-400">{form.price_gen} GEN</span>
           </div>
           <p className="text-xs text-gray-500">
-            What explorers pay per action. 60% builds the prize pool · 30% goes to you · 10% protocol.
+            Attempt Fee: what each explorer pays when they submit an action.
           </p>
           <input
             type="number"
@@ -418,6 +420,9 @@ export default function CreateChapterPage() {
               <span>Protocol (per attempt)</span>
               <span className="text-amber-400">{(form.price_gen * 0.1).toFixed(2)} GEN</span>
             </div>
+            <p className="text-amber-200/55 pt-1">
+              This is what each explorer pays whenever they submit an action.
+            </p>
           </div>
         </div>
 

@@ -21,6 +21,7 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
   const fw     = chapter.fomo_winner;
   const dc     = difficultyColor(chapter.difficulty);
   const leaderLabel = chapter.active ? "Current Leader" : "Final Winner";
+  const attemptFee = formatGEN(chapter.price_per_attempt);
 
   return (
     <Link href={`/chapter/${chapter.id}`}>
@@ -72,10 +73,14 @@ export default function ChapterCard({ chapter }: { chapter: Chapter }) {
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-amber-300/60">{formatGEN(chapter.price_per_attempt)} per action</span>
+            <span className="text-amber-300/60">Attempt Fee: {attemptFee}</span>
             {chapter.prize_pool > 0 && (
               <span className="text-amber-300 font-display font-bold">{formatGEN(chapter.prize_pool)} prize</span>
             )}
+          </div>
+          <div className="gold-divider" />
+          <div className="font-display text-xs tracking-widest uppercase text-amber-400 group-hover:text-amber-200 transition-colors">
+            {chapter.active ? `Attempt Chapter · ${attemptFee}` : "View Chronicle →"}
           </div>
         </div>
       </div>

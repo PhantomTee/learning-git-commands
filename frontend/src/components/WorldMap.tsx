@@ -97,18 +97,28 @@ export default function WorldMap({ chapters }: Props) {
                       {ch.scenario}
                     </p>
 
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="space-y-1 text-xs">
                       <span className="text-xs px-2 py-0.5 rounded-full font-display"
                         style={{ color: dc.color, border: `1px solid ${dc.border}`, background: `${dc.border.replace("0.4","0.08")}` }}>
                         D{ch.difficulty} · {difficultyLabel(ch.difficulty)}
                       </span>
-                      <span className="text-xs text-amber-300/70">{ch.attempt_count} attempts</span>
-                      {ch.prize_pool > 0 && (
-                        <span className="text-xs text-amber-300 font-bold">{formatGEN(ch.prize_pool)}</span>
-                      )}
-                      <span className="text-xs text-amber-400/60">{formatGEN(ch.price_per_attempt)}</span>
+                      <div className="flex items-center justify-between gap-3 text-amber-200/60">
+                        <span>Prize Pool</span>
+                        <span className="text-amber-300 font-bold">{formatGEN(ch.prize_pool)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-amber-200/60">
+                        <span>Attempt Fee</span>
+                        <span className="text-amber-400/80">{formatGEN(ch.price_per_attempt)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-amber-200/60">
+                        <span>Attempts</span>
+                        <span>{ch.attempt_count}</span>
+                      </div>
                       {fw && (
-                        <span className="text-xs text-amber-300">Leader: {fw.explorer.slice(0, 6)}…</span>
+                        <div className="flex items-center justify-between gap-3 text-amber-200/60">
+                          <span>Current Leader</span>
+                          <span className="text-amber-300">{fw.explorer.slice(0, 6)}…{fw.explorer.slice(-4)}</span>
+                        </div>
                       )}
                     </div>
                   </div>
