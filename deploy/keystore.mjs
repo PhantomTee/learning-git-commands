@@ -1,5 +1,9 @@
 /**
- * Persistent deployer key.
+ * Shared GenLayer deployer key.
+ *
+ * The key lives outside the repos, at ~/.genlayer/deployer.key, so ChainTales
+ * and GenSurvival deploy from the same funded address and there is only one
+ * secret to back up. Override the location with GENLAYER_DEPLOYER_KEY.
  *
  * deploy-studionet.mjs used to call generatePrivateKey() inline and never store
  * the result. Since ChainTales.__init__ sets `self.owner = gl.message.sender_address`,
@@ -7,12 +11,11 @@
  * existing when the process exited — permanently disabling withdraw_protocol,
  * admin_mint_nft and transfer_ownership.
  *
- * The key lives in deploy/.deployer.key, which is gitignored. It is a real
- * credential: anything the contract grants its owner is available to whoever
- * holds it. Do not commit it, paste it, or send it to anyone.
+ * This is a real credential: whoever holds it owns every contract deployed with
+ * it. Do not commit it, paste it, or send it to anyone.
  */
 
-import { existsSync, readFileSync, writeFileSync, chmodSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
@@ -23,7 +26,11 @@ const req = createRequire(join(root, "frontend", "package.json"));
 
 const { createAccount, generatePrivateKey } = req("genlayer-js");
 
-export const KEY_PATH = resolve(__dir, ".deployer.key");
+const HOME = process.env.USERPROFILE || process.env.HOME;
+if (!HOME) throw new Error("Cannot resolve a home directory for the deployer key.");
+
+export const KEY_PATH =
+  process.env.GENLAYER_DEPLOYER_KEY || resolve(HOME, ".genlayer", "deployer.key");
 
 /**
  * Load the deployer key, creating one on first use.
@@ -41,12 +48,13 @@ export function loadOrCreateDeployer() {
     return { account: createAccount(pk), created: false };
   }
 
+  mkdirSync(dirname(KEY_PATH), { recursive: true });
   const pk = generatePrivateKey();
   writeFileSync(KEY_PATH, pk + "\n", { encoding: "utf8", mode: 0o600 });
   try {
     chmodSync(KEY_PATH, 0o600);
   } catch {
-    /* best-effort on Windows */
+    /* best-effort; POSIX modes do not map to NTFS ACLs */
   }
   return { account: createAccount(pk), created: true };
 }
