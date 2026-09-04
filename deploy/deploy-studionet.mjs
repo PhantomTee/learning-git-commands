@@ -75,7 +75,19 @@ if (!address) {
   console.error(JSON.stringify(receipt, null, 2));
   process.exit(1);
 }
-console.log(`\nContract: ${address}`);
+const leader = receipt?.consensus_data?.leader_receipt?.[0] ?? receipt?.consensus_data?.leader_receipt;
+if (leader?.execution_result !== "SUCCESS") {
+  // FINALIZED only means consensus accepted the transaction. A contract whose
+  // constructor fails still finalizes, still reports an address, and simply does
+  // not exist when you call it - so this has to be checked explicitly.
+  console.error(`Deploy FAILED: execution_result=${leader?.execution_result}`);
+  console.error(`  Nothing is deployed at ${address}.`);
+  console.error(`  GenVM: ${JSON.stringify(leader?.genvm_result ?? null)}`);
+  process.exit(1);
+}
+
+console.log(`
+Contract: ${address} (execution SUCCESS)`);
 
 // ── 4. Patch CONTRACT_ADDRESS in genlayer-server.ts ───────────────────────────
 const serverTs = resolve(root, "frontend/src/lib/genlayer-server.ts");
