@@ -192,12 +192,38 @@ export async function getRequiredPublishDeposit(basePrizeWei: bigint, difficulty
   }) as unknown as Promise<bigint>;
 }
 
-export async function getLeaderboard() {
-  return readClient.readContract({
+/** Chapters are scanned by id, so both paginated views need a bound. */
+export const VIEW_PAGE_SIZE = 200;
+
+export async function getChapterCount() {
+  const n = (await readClient.readContract({
     address: CONTRACT_ADDRESS,
-    functionName: "get_leaderboard",
+    functionName: "get_chapter_count",
     args: [],
-  }) as unknown as Promise<LeaderboardEntry[]>;
+  })) as unknown as bigint | number;
+  return Number(n);
+}
+
+/**
+ * Walks every page of a chapter-indexed view. The contract no longer scans all
+ * chapters in one call, so the paging happens here instead of timing out there.
+ */
+async function readAllPages<T>(functionName: string, leadingArgs: (string | number)[] = []): Promise<T[]> {
+  const count = await getChapterCount();
+  const out: T[] = [];
+  for (let offset = 0; offset < count; offset += VIEW_PAGE_SIZE) {
+    const page = (await readClient.readContract({
+      address: CONTRACT_ADDRESS,
+      functionName,
+      args: [...leadingArgs, offset, VIEW_PAGE_SIZE],
+    })) as unknown as T[];
+    out.push(...page);
+  }
+  return out;
+}
+
+export async function getLeaderboard() {
+  return readAllPages<LeaderboardEntry>("get_leaderboard");
 }
 
 export async function getUserAttempts(chapterId: number, address: string) {
@@ -225,11 +251,7 @@ export async function getCreatorBalance(address: string) {
 }
 
 export async function getClaimablePrizes(address: string) {
-  return readClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_claimable_prizes",
-    args: [address],
-  }) as unknown as Promise<ClaimablePrize[]>;
+  return readAllPages<ClaimablePrize>("get_claimable_prizes", [address]);
 }
 
 export async function getAllNfts() {

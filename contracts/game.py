@@ -633,11 +633,25 @@ Return ONLY valid JSON:
         return self._creator_balance(address)
 
     @gl.public.view
-    def get_claimable_prizes(self, address: Address) -> list:
-        """Returns closed chapters where address is the unclaimed FOMO winner."""
+    def get_chapter_count(self) -> u256:
+        """Total chapters ever created - the upper bound for paginated scans."""
+        return self._chapter_count()
+
+    @gl.public.view
+    def get_claimable_prizes(self, address: Address, offset: u256, limit: u256) -> list:
+        """Closed chapters where address is the unclaimed FOMO winner.
+
+        Scans chapter ids [offset, offset + limit). This used to walk every
+        chapter ever created on a single call, so the view got slower with each
+        publish and would eventually stop returning at all. Page with
+        get_chapter_count(); a page can yield fewer rows than limit because most
+        chapters have no winner for this address.
+        """
+        assert limit >= u256(1) and limit <= u256(200), "Limit must be 1-200"
         result = []
         count = int(self._chapter_count())
-        for i in range(count):
+        end = min(count, int(offset) + int(limit))
+        for i in range(int(offset), end):
             cid = u256(i)
             if cid not in self.fomo_winners:
                 continue
@@ -722,10 +736,17 @@ Return ONLY this exact JSON (no other text):
         }
 
     @gl.public.view
-    def get_leaderboard(self) -> list:
+    def get_leaderboard(self, offset: u256, limit: u256) -> list:
+        """Winners of chapter ids [offset, offset + limit).
+
+        Same reasoning as get_claimable_prizes: an unbounded walk over every
+        chapter does not survive the game growing. Page with get_chapter_count().
+        """
+        assert limit >= u256(1) and limit <= u256(200), "Limit must be 1-200"
         result = []
         count = int(self._chapter_count())
-        for i in range(count):
+        end = min(count, int(offset) + int(limit))
+        for i in range(int(offset), end):
             cid = u256(i)
             if cid in self.fomo_winners:
                 w = self.fomo_winners[cid]
@@ -816,6 +837,8 @@ Return ONLY this exact JSON (no other text):
 
     @gl.public.view
     def get_all_nfts(self) -> list:
+        # Bounded by construction: mint_creator_nft and admin_mint_nft both
+        # refuse past MAX_CREATOR_NFTS, so supply never exceeds 100.
         supply = int(self._nft_supply())
         result = []
         for i in range(1, supply + 1):
