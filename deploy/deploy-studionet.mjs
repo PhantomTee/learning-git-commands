@@ -16,9 +16,11 @@ const __dir  = dirname(fileURLToPath(import.meta.url));
 const root   = resolve(__dir, "..");
 const req    = createRequire(join(root, "frontend", "package.json"));
 
-const { createClient, createAccount, generatePrivateKey } = req("genlayer-js");
+const { createClient } = req("genlayer-js");
 const { studionet }        = req("genlayer-js/chains");
 const { TransactionStatus } = req("genlayer-js/types");
+
+const { loadOrCreateDeployer, KEY_PATH } = await import("./keystore.mjs");
 
 const RPC = "https://studio.genlayer.com/api";
 
@@ -34,9 +36,13 @@ async function rpc(method, params, rawBody) {
   return json.result;
 }
 
-// ── 1. Fresh key + account ────────────────────────────────────────────────────
-const pk      = generatePrivateKey();
-const account = createAccount(pk);
+// ── 1. Persistent deployer key ────────────────────────────────────────────────────
+// Persistent key: a throwaway one made the deployed contract's owner
+// unreachable, since __init__ records the deployer as owner.
+const { account, created } = loadOrCreateDeployer();
+if (created) {
+  console.log(`Created a new deployer key at ${KEY_PATH} (gitignored — back it up).`);
+}
 console.log(`Deployer: ${account.address}`);
 
 // ── 2. Fund via studionet sim_fundAccount (1000 GEN) ─────────────────────────

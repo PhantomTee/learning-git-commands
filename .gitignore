@@ -2,3 +2,6 @@
 # frontend/convex/_generated/ is intentionally COMMITTED: the app imports it
 # and the Vercel build runs no `convex codegen` step, so ignoring it breaks
 # deployment. Regenerate with `npx convex dev` and commit the result.
+
+# Deployer private key - owner of every contract deployed with it.
+deploy/.deployer.key
