@@ -129,7 +129,8 @@ export default function ChapterPage() {
 
   async function handleClose() {
     if (!chapter) return;
-    if (chapter.attempt_count < MIN_ATTEMPTS_BEFORE_CLOSE) {
+    const isExpired = chapter.closes_at !== undefined && Date.now() / 1000 >= chapter.closes_at;
+    if (!isExpired && chapter.attempt_count < MIN_ATTEMPTS_BEFORE_CLOSE) {
       toastError("Chapter cannot close yet", `This chapter can close after ${MIN_ATTEMPTS_BEFORE_CLOSE} attempts.`);
       return;
     }
@@ -223,7 +224,10 @@ export default function ChapterPage() {
   const priceGEN = formatGEN(chapter.price_per_attempt);
   const leaderTitle = chapter.active ? "Current Leader" : "Final Winner";
   const closeAttemptCount = Math.min(chapter.attempt_count, MIN_ATTEMPTS_BEFORE_CLOSE);
-  const canCloseChapter = chapter.attempt_count >= MIN_ATTEMPTS_BEFORE_CLOSE;
+  // After closes_at the contract lets anyone close, so the standing leader can
+  // finally claim a pool the creator has no incentive to release.
+  const expired = chapter.closes_at !== undefined && Date.now() / 1000 >= chapter.closes_at;
+  const canCloseChapter = expired || chapter.attempt_count >= MIN_ATTEMPTS_BEFORE_CLOSE;
   const connectedAccount = walletAddress?.toLowerCase() ?? null;
   const isCreator = connectedAccount === chapter.creator.toLowerCase();
   const isCurrentLeader = !!connectedAccount && winner && connectedAccount === fw.explorer.toLowerCase();
@@ -404,27 +408,38 @@ export default function ChapterPage() {
         </div>
       )}
 
-      {/* Creator controls */}
-      {chapter.active && isCreator && (
+      {/* Creator controls — also shown to everyone once the chapter expires */}
+      {chapter.active && (isCreator || expired) && (
         <div className="panel p-4 flex items-center justify-between gap-3"
           style={{ border: "1px solid rgba(220,38,38,0.25)", background: "rgba(220,38,38,0.04)" }}>
           <div>
-            <p className="font-display text-sm text-red-400">Creator Controls</p>
+            <p className="font-display text-sm text-red-400">
+              {isCreator ? "Creator Controls" : "Chapter Expired"}
+            </p>
             <p className="text-xs text-amber-900/60">
               Closing locks the chapter. The current leader becomes the final winner and can claim the prize pool.
             </p>
             <p className="text-xs text-amber-200/60 mt-1">
-              This chapter can close after {MIN_ATTEMPTS_BEFORE_CLOSE} attempts.
+              {expired
+                ? "This chapter has run its course — anyone can close it now so the leader can claim."
+                : `This chapter can close after ${MIN_ATTEMPTS_BEFORE_CLOSE} attempts.`}
             </p>
-            <p className="text-xs text-amber-200/60 mt-1">
-              10 attempts are required so explorers have time to challenge the current leader before the pool is finalized.
-            </p>
+            {!expired && (
+              <p className="text-xs text-amber-200/60 mt-1">
+                {MIN_ATTEMPTS_BEFORE_CLOSE} attempts are required so explorers have time to challenge the current leader before the pool is finalized.
+              </p>
+            )}
             <p className="text-xs text-amber-900/60">
               Attempts so far: {closeAttemptCount}/{MIN_ATTEMPTS_BEFORE_CLOSE}.
             </p>
             {!canCloseChapter && (
               <p className="text-xs text-red-300/70 mt-1">
                 Closing is disabled until explorers have made {MIN_ATTEMPTS_BEFORE_CLOSE - chapter.attempt_count} more attempts.
+              </p>
+            )}
+            {!expired && chapter.closes_at !== undefined && (
+              <p className="text-xs text-amber-900/50 mt-1">
+                Opens to everyone on {new Date(chapter.closes_at * 1000).toLocaleDateString()}.
               </p>
             )}
           </div>

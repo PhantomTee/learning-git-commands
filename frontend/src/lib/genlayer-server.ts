@@ -57,8 +57,35 @@ export interface Chapter {
   price_per_attempt: number;
   attempt_count: number;
   active: boolean;
+  /** Unix seconds. Present on chapters created after the expiry change. */
+  created_at?: number;
+  /** Unix seconds after which anyone may close the chapter. */
+  closes_at?: number;
   prize_pool: number;
   fomo_winner: FomoWinner;
+}
+
+/**
+ * Once a chapter is past closes_at, any address may close it — the creator has
+ * no incentive to, since they earn 30 % of every attempt, and until it closes
+ * the standing leader cannot claim the pool.
+ */
+export function isChapterExpired(chapter: Chapter, nowSeconds = Date.now() / 1000): boolean {
+  return chapter.closes_at !== undefined && nowSeconds >= chapter.closes_at;
+}
+
+export function canCloseChapter(
+  chapter: Chapter,
+  viewer: string | null,
+  nowSeconds = Date.now() / 1000,
+): boolean {
+  if (!chapter.active) return false;
+  if (isChapterExpired(chapter, nowSeconds)) return true;
+  return (
+    viewer !== null &&
+    viewer.toLowerCase() === chapter.creator.toLowerCase() &&
+    chapter.attempt_count >= 10
+  );
 }
 
 export interface Attempt {

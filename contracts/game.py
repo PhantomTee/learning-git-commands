@@ -1,6 +1,7 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from genlayer import *
 
 MAX_CHAPTER_ATTEMPTS = 200
@@ -12,6 +13,12 @@ BPS_DENOMINATOR      = u256(10000)
 SCENARIO_GEN_FEE     = u256(10 * 10 ** 18)  # 10 GEN in wei
 MAX_CREATOR_NFTS     = u256(100)
 NFT_MINT_PRICE       = u256(5 * 10 ** 18)   # 5 GEN in wei
+
+# A chapter that nobody closes locks its prize pool forever: only the creator
+# could close it, and the creator earns 30 % of every attempt, so closing is
+# against their interest. After this long anyone may close it, which lets the
+# standing leader actually claim.
+CHAPTER_MAX_DURATION = 7 * 24 * 3600   # seconds
 
 # Used to send native GEN to any address (EOA or contract)
 @gl.evm.contract_interface
@@ -47,6 +54,7 @@ class Chapter:
     price_per_attempt: u256   # wei (1 GEN = 10^18)
     attempt_count: u256
     active: bool
+    created_at: u256          # unix seconds, for the expiry-based close
 
 
 @allow_storage
@@ -149,6 +157,26 @@ class ChainTales(gl.Contract):
     def _zero_address(self) -> Address:
         return Address(b'\x00' * 20)
 
+    def _now(self) -> int:
+        raw = gl.message_raw["datetime"]
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return int(parsed.timestamp())
+
+    def _mix32(self, value: int) -> int:
+        """32-bit avalanche mix - spreads correlated inputs across the range."""
+        mask = 0xFFFFFFFF
+        h = value & mask
+        h ^= h >> 15
+        h = (h * 2246822519) & mask
+        h ^= h >> 13
+        h = (h * 3266489917) & mask
+        h ^= h >> 16
+        return h
+
     def _esc(self, s: str) -> str:
         return (s.replace("&", "&amp;")
                   .replace("<", "&lt;")
@@ -178,12 +206,35 @@ class ChainTales(gl.Contract):
         if character_class == "Bard":    return (8, 13, 9)
         return (10, 12, 8)  # Cleric
 
-    def _derive_roll(self, chapter_id: u256, attempt_count: int, agility: int) -> int:
-        return (
+    def _derive_roll(
+        self,
+        chapter_id: u256,
+        attempt_count: int,
+        agility: int,
+        caller: Address,
+        timestamp: int,
+    ) -> int:
+        """Roll a d20 that the explorer cannot read off the chain in advance.
+
+        The old formula used only chapter_id, attempt_count and the caller's own
+        agility - all public through get_chapter - so anyone could compute the
+        exact roll their next attempt would produce and simply wait for a
+        favourable one. Paying for an attempt was risk-free.
+
+        Folding in the execution timestamp fixes that: it is fixed for every
+        validator (it comes from the transaction envelope, so consensus holds)
+        but is not known while the transaction is being composed. An explorer
+        can still gamble on landing in a given second, and they pay the attempt
+        price for every try - which is the point.
+        """
+        seed = (
             attempt_count * 2654435761
             + agility * 1000003
             + int(chapter_id) * 999983
-        ) % 20 + 1
+            + timestamp * 2654435741
+            + int(str(caller), 16) % 1000003
+        )
+        return self._mix32(seed) % 20 + 1
 
     @gl.public.write
     def transfer_ownership(self, new_owner: Address) -> None:
@@ -299,6 +350,7 @@ class ChainTales(gl.Contract):
             difficulty=difficulty,
             price_per_attempt=price_per_attempt,
             attempt_count=u256(0), active=True,
+            created_at=u256(self._now()),
         )
         self.prize_pools[chapter_id] = gl.message.value
         return chapter_id
@@ -307,10 +359,20 @@ class ChainTales(gl.Contract):
     def close_chapter(self, chapter_id: u256) -> None:
         assert chapter_id in self.chapters, "Chapter does not exist"
         ch = self.chapters[chapter_id]
-        assert ch.creator == gl.message.sender_address, \
-            "Only the creator can close this chapter"
-        assert int(ch.attempt_count) >= MIN_ATTEMPTS_BEFORE_CLOSE or int(ch.attempt_count) >= MAX_CHAPTER_ATTEMPTS, \
-            "Chapter cannot be closed until it has at least 10 attempts"
+        assert ch.active, "Chapter is already closed"
+
+        is_creator = ch.creator == gl.message.sender_address
+        expired = self._now() >= int(ch.created_at) + CHAPTER_MAX_DURATION
+
+        # Before expiry only the creator may close, and only once the chapter
+        # has had a fair run. After expiry anyone may close it - otherwise a
+        # creator who simply never closes keeps the leader's prize locked up
+        # forever while still collecting their 30 % of each attempt.
+        assert is_creator or expired, \
+            "Only the creator can close this chapter before it expires"
+        if is_creator and not expired:
+            assert int(ch.attempt_count) >= MIN_ATTEMPTS_BEFORE_CLOSE, \
+                "Chapter needs at least " + str(MIN_ATTEMPTS_BEFORE_CLOSE) + " attempts to close"
         self.chapters[chapter_id].active = False
 
         # No winner → prize pool goes to protocol
@@ -332,6 +394,8 @@ class ChainTales(gl.Contract):
             "price_per_attempt": int(ch.price_per_attempt),
             "attempt_count": int(ch.attempt_count),
             "active": ch.active,
+            "created_at": int(ch.created_at),
+            "closes_at": int(ch.created_at) + CHAPTER_MAX_DURATION,
             "prize_pool": int(self._prize_pool(chapter_id)),
             "fomo_winner": self._fomo_winner_dict(chapter_id),
         }
@@ -353,6 +417,8 @@ class ChainTales(gl.Contract):
                     "price_per_attempt": int(ch.price_per_attempt),
                     "attempt_count": int(ch.attempt_count),
                     "active": ch.active,
+                    "created_at": int(ch.created_at),
+                    "closes_at": int(ch.created_at) + CHAPTER_MAX_DURATION,
                     "prize_pool": int(self._prize_pool(cid)),
                     "fomo_winner": self._fomo_winner_dict(cid),
                 })
@@ -404,7 +470,9 @@ class ChainTales(gl.Contract):
         chapter_difficulty = int(ch.difficulty)
         attempt_idx = int(ch.attempt_count)
 
-        roll = self._derive_roll(chapter_id, attempt_idx, char_agility)
+        roll = self._derive_roll(
+            chapter_id, attempt_idx, char_agility, caller, self._now()
+        )
         difficulty = chapter_difficulty
 
         safe_scenario = self._esc(chapter_scenario)
