@@ -20,6 +20,7 @@ import { useToast } from "@/components/Toast";
 import { useCharacterGate } from "@/hooks/useCharacterGate";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { signActivity } from "@/lib/sign-activity";
 
 const MAX_SUPPLY = 100;
 
@@ -87,6 +88,7 @@ export default function MarketplacePage() {
         amount_wei: NFT_MINT_PRICE.toString(),
         tx_hash: txHash,
         message: `${addr.slice(0, 6)}...${addr.slice(-4)} minted Creator NFT #${nextTokenId}.`,
+        ...(await signActivity('recordActivity', addr)),
       }).catch(() => {});
       dismiss(tid);
       success("Creator NFT minted!", "You are now a Creator.", { href: explorerTxUrl(txHash), label: "View transaction" });

@@ -22,6 +22,7 @@ import { useToast } from "@/components/Toast";
 import { useCharacterGate } from "@/hooks/useCharacterGate";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { signActivity } from "@/lib/sign-activity";
 
 const HISTORY_KEY = "scenario_history";
 const MAX_HISTORY = 10;
@@ -182,6 +183,7 @@ export default function CreateChapterPage() {
         chapter_title: form.title,
         tx_hash: txHash,
         message: `${gate.account.slice(0, 6)}...${gate.account.slice(-4)} published ${form.title}.`,
+        ...(await signActivity('recordActivity', gate.account)),
       }).catch(() => {});
       await revalidateHome();
       dismiss(tid);

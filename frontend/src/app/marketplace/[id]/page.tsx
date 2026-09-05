@@ -23,6 +23,7 @@ import {
   waitForResult,
   NftItem,
 } from "@/lib/genlayer";
+import { signActivity } from "@/lib/sign-activity";
 
 const MAX_SUPPLY = 100;
 
@@ -100,6 +101,7 @@ export default function CreatorNftPage() {
         amount_wei: priceWei.toString(),
         tx_hash: txHash,
         message: `${shortAddress(addr)} listed Creator NFT #${tokenId} for ${genAmount} GEN.`,
+        ...(await signActivity('recordActivity', addr)),
       }).catch(() => {});
       dismiss(tid);
       success("NFT listed", `Creator NFT #${tokenId} is now for sale at ${genAmount} GEN.`);
@@ -155,6 +157,7 @@ export default function CreatorNftPage() {
         amount_wei: String(nft.price),
         tx_hash: txHash,
         message: `${shortAddress(addr)} bought Creator NFT #${tokenId}.`,
+        ...(await signActivity('recordActivity', addr)),
       }).catch(() => {});
       dismiss(tid);
       success("NFT purchased", `You now hold Creator NFT #${tokenId}.`);

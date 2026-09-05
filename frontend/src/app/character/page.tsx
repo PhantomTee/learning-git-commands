@@ -27,6 +27,7 @@ import { useCharacterGate } from "@/hooks/useCharacterGate";
 import Link from "next/link";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { signActivity } from "@/lib/sign-activity";
 
 interface ActiveLead {
   chapter: Chapter;
@@ -191,6 +192,7 @@ export default function CharacterPage() {
         amount_wei: prize ? String(prize.prize_pool) : undefined,
         tx_hash: txHash,
         message: `${gate.account.slice(0, 6)}...${gate.account.slice(-4)} claimed the final pool${prize?.title ? ` for ${prize.title}` : ""}.`,
+        ...(await signActivity('recordActivity', gate.account)),
       }).catch(() => {});
       dismiss(tid);
       success("Final pool claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });

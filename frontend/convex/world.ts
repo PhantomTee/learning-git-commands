@@ -1,5 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireSigner } from "./auth";
+
+/** Proof that the caller controls the address they are writing as. */
+const signed = {
+  timestamp: v.number(),
+  signature: v.string(),
+};
 
 // ── Players ──────────────────────────────────────────────────────────────────
 
@@ -11,8 +18,12 @@ export const upsertPlayer = mutation({
     x: v.number(),
     y: v.number(),
     status: v.string(),
+    ...signed,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const address = await requireSigner("upsertPlayer", rawArgs);
+    const { timestamp: _t, signature: _s, ...rest } = rawArgs;
+    const args = { ...rest, address };
     const existing = await ctx.db
       .query("players")
       .withIndex("by_address", (q) => q.eq("address", args.address))
@@ -37,8 +48,10 @@ export const upsertPlayer = mutation({
 });
 
 export const movePlayer = mutation({
-  args: { address: v.string(), x: v.number(), y: v.number() },
-  handler: async (ctx, { address, x, y }) => {
+  args: { address: v.string(), x: v.number(), y: v.number(), ...signed },
+  handler: async (ctx, rawArgs) => {
+    const address = await requireSigner("movePlayer", rawArgs);
+    const { x, y } = rawArgs;
     const player = await ctx.db
       .query("players")
       .withIndex("by_address", (q) => q.eq("address", address))
@@ -66,10 +79,14 @@ export const sendMessage = mutation({
     name: v.string(),
     message: v.string(),
     chapter_id: v.optional(v.number()),
+    ...signed,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const address = await requireSigner("sendMessage", rawArgs);
+    const { timestamp: _t, signature: _s, ...rest } = rawArgs;
     await ctx.db.insert("chat", {
-      ...args,
+      ...rest,
+      address,
       timestamp: Date.now(),
     });
   },
@@ -113,8 +130,12 @@ export const recordActivity = mutation({
     message: v.string(),
     success: v.optional(v.boolean()),
     roll: v.optional(v.number()),
+    ...signed,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, rawArgs) => {
+    const actor = await requireSigner("recordActivity", { ...rawArgs, address: rawArgs.actor });
+    const { timestamp: _t, signature: _s, ...rest } = rawArgs;
+    const args = { ...rest, actor };
     const existing = await ctx.db
       .query("activity")
       .withIndex("by_tx_hash", (q) => q.eq("tx_hash", args.tx_hash))

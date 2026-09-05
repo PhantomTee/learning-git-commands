@@ -14,6 +14,7 @@ import { useCharacterGate } from "@/hooks/useCharacterGate";
 import Link from "next/link";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { signActivity } from "@/lib/sign-activity";
 
 const MIN_ATTEMPTS_BEFORE_CLOSE = 10;
 
@@ -106,6 +107,7 @@ export default function ChapterPage() {
         message: `${account.slice(0, 6)}...${account.slice(-4)} ${attempt.success ? "became current leader for" : "attempted"} ${chapter.title}.`,
         success: attempt.success,
         roll: attempt.roll,
+        ...(await signActivity('recordActivity', account)),
       }).catch(() => {});
 
       const oldLeader = chapter.fomo_winner.explorer.toLowerCase();
@@ -121,7 +123,8 @@ export default function ChapterPage() {
           message: `${account.slice(0, 6)}...${account.slice(-4)} became the current leader for ${chapter.title}.`,
           success: true,
           roll: attempt.roll,
-        }).catch(() => {});
+        ...(await signActivity('recordActivity', account)),
+      }).catch(() => {});
       }
     }
     return { attempt, txHash };
@@ -154,6 +157,7 @@ export default function ChapterPage() {
         chapter_title: chapter?.title,
         tx_hash: txHash,
         message: `${chapter?.title ?? "A chapter"} was closed.`,
+        ...(await signActivity('recordActivity', gate.account)),
       }).catch(() => {});
       dismiss(tid);
       success("Chapter closed", "The final winner can now claim the prize pool.", { href: explorerTxUrl(txHash), label: "View transaction" });
@@ -192,6 +196,7 @@ export default function ChapterPage() {
         amount_wei: String(chapter.prize_pool),
         tx_hash: txHash,
         message: `${gate.account.slice(0, 6)}...${gate.account.slice(-4)} claimed the final pool for ${chapter.title}.`,
+        ...(await signActivity('recordActivity', gate.account)),
       }).catch(() => {});
       dismiss(tid);
       success("Final pool claimed!", "Your GEN has been sent to your wallet.", { href: explorerTxUrl(txHash), label: "View transaction" });
