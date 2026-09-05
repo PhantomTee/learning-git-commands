@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# .env* above would swallow this too, and it is the only record of
+# which variables the app needs. NEXT_PUBLIC_CONVEX_URL being unset is
+# what produces the CONVEX FATAL ERROR on every page load.
+!.env.example

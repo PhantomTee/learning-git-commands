@@ -5,3 +5,11 @@
 
 # Deployer private key - owner of every contract deployed with it.
 deploy/.deployer.key
+
+.vercel
+.env*
+
+# .env* above would swallow this too, and it is the only record of
+# which variables the app needs. NEXT_PUBLIC_CONVEX_URL being unset is
+# what produces the CONVEX FATAL ERROR on every page load.
+!.env.example
