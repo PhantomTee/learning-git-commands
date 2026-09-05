@@ -20,6 +20,11 @@ A successful action makes the explorer the current leader for that active chapte
 ### Final Winner
 When the chapter closes, the current leader becomes the final winner. Only then can that address claim the prize pool. If the chapter closes with no current leader, the pool goes to protocol.
 
+Chapters expire after 7 days, and once expired **anyone** may close them. This
+matters: before, only the creator could close a chapter, and the creator earns
+30 % of every attempt — so closing was against their interest and a standing
+leader's prize could stay locked indefinitely.
+
 ---
 
 ## GenLayer — every integration point
@@ -70,6 +75,13 @@ result = self._parse(gl.eq_principle.strict_eq(judge))
 - `gl.eq_principle.strict_eq` — GenLayer consensus principle: all validators must return byte-identical results before the transaction is accepted
 
 The verdict shifts the explorer's d20 roll by ±2, making strategy matter. The entire judgment pipeline — prompt, consensus, roll calculation, stat progression, prize accounting — completes in a single on-chain transaction.
+
+The roll itself is not free to read in advance. It was originally derived from
+the chapter id, the attempt count and the explorer's own agility — all public
+through `get_chapter` — so anyone could compute the exact roll their next
+attempt would produce and pay only when it was a guaranteed win. The seed now
+mixes in the execution timestamp, which is identical for every validator (so
+consensus holds) but is not knowable while the transaction is being composed.
 
 ### 3. On-chain AI — scenario generation
 
